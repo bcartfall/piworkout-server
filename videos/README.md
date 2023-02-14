@@ -1,0 +1,1 @@
+This folder is shared between the docker containers and contains the video files.

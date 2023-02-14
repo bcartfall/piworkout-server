@@ -1,0 +1,123 @@
+.app {
+  text-align: center;
+  background-color: #282c34;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(9px + 1vmin);
+  color: white;
+}
+
+a {
+  color: white;
+}
+
+.page {
+  margin: 0 auto;
+  min-width: 800px;
+  max-width: 800px;
+  padding: 15px 0;
+}
+
+.page-video {
+  padding: 32px;
+  max-width: none;
+  width: 100%;
+}
+
+.link {
+  text-decoration: none;
+  color: inherit;
+}
+
+.piVideo .title {
+  display: block;
+  
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #ddd;
+}
+
+.piVideo-item {
+  height: 80px;
+}
+
+.piVideo-item .title {
+  white-space: normal;
+  font-size: 0.8rem;
+}
+
+.piVideo .description {
+  overflow: hidden;
+  max-height: 76px;
+  color: #aaa;
+}
+
+.piVideo .cover {
+  position: absolute;
+  left: 0;
+  top: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 100ms ease-in-out;
+}
+
+.piVideo .cover .center {
+  margin: 0 auto;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  padding: 8px 16px;
+  border-radius: 8px;
+  transform: translateY(-50%) translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.75);
+}
+
+.piVideo .content {
+  background-color: #1e1e1e;
+  transition: background 100ms ease-in-out;
+}
+
+.piVideo {
+  cursor: pointer;
+}
+
+.piVideo:hover .content, .piVideo.active .content {
+  background-color: #2e2e2e;
+}
+
+.piVideo:hover .cover {
+  opacity: 1;
+}
+
+.piVideo:hover .title {
+  color: #fff;
+}
+
+.piVideo-item .cardContent, .piVideo-item .cardContent:last-child {
+  padding: 6px;
+}
+
+.piVideo .number p, .piVideo .number svg {
+  position: absolute;
+  font-size: 0.9rem;
+  top: 50%;
+  left: 4px;
+  margin: -12px 0 0 0;
+  color: #aaa;
+}
+
+.piVideo .number svg {
+  font-size: 1.2rem;
+  left: -1px;
+  margin-top: -10px;
+}
+
+.videoPlayerProgress .MuiLinearProgress-bar {
+  transition: none;
+}

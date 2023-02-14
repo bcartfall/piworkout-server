@@ -1,0 +1,35 @@
+services:
+  frontend-react:
+    build: ./frontend/
+    restart: on-failure
+    volumes:
+      - /app/frontend-react/node_modules
+      - ./frontend/:/app/frontend-react
+    environment:
+      - PORT=$APP_PORT
+  frontend-nginx:
+    image: nginx
+    restart: on-failure
+    volumes:
+      - ./nginx/nginx-dev.conf:/etc/nginx/conf.d/default.conf
+      - $VIDEO_FOLDER:/videos
+      - ./frontend:/var/www/frontend
+    ports:
+      - "$APP_PORT:80"
+    depends_on:
+      - backend
+      - frontend-react
+  backend:
+    build: ./backend/
+    restart: on-failure
+    #ports:
+    #  - "5001:5001"
+    environment:
+      - APP_ENV=development
+      - APP_HOST=$APP_HOST
+      - APP_PORT=$APP_PORT
+      - BACKEND_HOST=0.0.0.0
+      - BACKEND_PORT=5001
+    volumes:
+      - ./backend/:/app/backend
+      - $VIDEO_FOLDER:/videos

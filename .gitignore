@@ -1,0 +1,11 @@
+youtube.json
+.vscode
+.git
+.env
+node_modules
+client_secret.json
+__pycache__
+backend/db/cookies.txt
+backend/db/database.sqlite3
+videos/*
+!videos/README.md
