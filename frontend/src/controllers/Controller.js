@@ -116,6 +116,10 @@ export class Controller {
     this._setSettings(settings);
   }
 
+  getSettings() {
+    return this._settings;
+  }
+
   getVideos() {
     return this._videos;
   }

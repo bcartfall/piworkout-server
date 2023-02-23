@@ -25,7 +25,10 @@ class DownloaderThread:
     _currentVideo = None # current video that is downloading
     _lastUpdate = 0 # only update progress at specific intervals
     _step = 0 # 0 = video, 1 = audio
-    _simulate = False
+    _currentFormat = None
+    _previousWeight = 0
+    _formats = []
+    _simulate = False # set to True to simulate the animation and websocket updates of video downloading
 
     def run(self):
         while (self._running):
@@ -52,7 +55,10 @@ class DownloaderThread:
     # progress_hook for yt-dlp
     # see progress_hooks at https://github.com/yt-dlp/yt-dlp/blob/master/yt_dlp/YoutubeDL.py#L191
     def _dlp_progress_hook(self, d):
-        print('------------------------------- progress_hook called '+ str(d.get('downloaded_bytes')) + '/' + str(d.get('total_bytes')) + ', status=' + d['status'] + ', filename=' + d['filename'])
+        previousWeight = self._previousWeight
+        weight = self._currentFormat['weight']
+        
+        print('---------- progress_hook called '+ str(d.get('downloaded_bytes')) + '/' + str(d.get('total_bytes')) + ', status=' + d['status'] + ', filename=' + d['filename'] + ', weight=' + str(weight) + ', previousWeight=' + str(previousWeight))
         # store progress in memory for other calls
         with model.video.dataMutex():
             shouldBroadcast = False
@@ -66,15 +72,21 @@ class DownloaderThread:
                 shouldBroadcast = True
                 self._step += 1
                 if (self._step == 2):
-                    print('------------------------------- finished audio')
+                    print('---------- finished audio')
                     self._currentVideo.status = model.STATUS_ENCODING
                 else:
-                    print('------------------------------- finished video')
+                    print('---------- finished video')
                     self._currentVideo.status = model.STATUS_DOWNLOADING_AUDIO
             elif d['status'] == 'downloading':
+                # determine progress
                 self._currentVideo.status = model.STATUS_DOWNLOADING_VIDEO
                 self._currentVideo.progress.downloadedBytes = d.get('downloaded_bytes')
                 self._currentVideo.progress.totalBytes = d.get('total_bytes')
+                totalBytes = d.get('total_bytes')
+                if (totalBytes > 0):
+                    progress = previousWeight + (d.get('downloaded_bytes') / totalBytes * weight)
+                    print('-- progress=' + str(progress))
+                    self._currentVideo.progress.progress = progress
                 self._currentVideo.progress.eta = d.get('eta')
                 self._currentVideo.progress.speed = d.get('speed')
                 self._currentVideo.progress.elapsed = d.get('elapsed')
@@ -98,11 +110,21 @@ class DownloaderThread:
 
         with model.video.dataMutex():
             self._currentVideo.progress = model.VideoProgress()
+            self._previousWeight = 0
             url = self._currentVideo.url
             print('downloading next item from queue', self._currentVideo.videoId)
             id = self._currentVideo.id
             filename = self._currentVideo.filename
-
+            
+            # downgrade video quality setting until it matches maximum height of video
+            videoQuality = model.settings.get('videoQuality')
+            if (self._currentVideo.height < 2160 and videoQuality == '4K'):
+                videoQuality = '1440p'
+            if (self._currentVideo.height < 1440 and videoQuality == '1440p'):
+                videoQuality = '1080p'
+            if (self._currentVideo.height < 1080 and videoQuality == '1080p'):
+                videoQuality = '720p'
+            
         # catch output
         class dlp_logger:
             def debug(self, msg):
@@ -126,50 +148,111 @@ class DownloaderThread:
                 pass
 
         # prepare download options
-        match (model.settings.get('videoQuality')):
+        match (videoQuality):
             case '4K': 
-                resolution = '2160'
+                bestHeight = 2160
+                self._formats = [
+                    {
+                        'weight': 0.625,
+                        'height': 2160,
+                        'name': '4K',
+                    },
+                    {
+                        'weight': 0.25,
+                        'height': 1440,
+                        'name': '1440p',
+                    },
+                    {
+                        'weight': 0.125,
+                        'height': 1080,
+                        'name': '1080p',
+                    },
+                ]
             case '1440p':
-                resolution = '1440'
+                bestHeight = 1440
+                self._formats = [
+                    {
+                        'weight': 0.65,
+                        'height': 1440,
+                        'name': '1440p',
+                    },
+                    {
+                        'weight': 0.35,
+                        'height': 1080,
+                        'name': '1080p',
+                    },
+                ]
             case '1080p':
-                resolution = '1080'
+                bestHeight = 1080
+                self._formats = [
+                    {
+                        'weight': 1.0,
+                        'height': 1080,
+                        'name': '1080p',
+                    },
+                ]
             case '720p':
-                resolution = '720'
+                bestHeight = 720
+                self._formats = [
+                    {
+                        'weight': 1.0,
+                        'height': 720,
+                        'name': '720p',
+                    },
+                ]
 
         #print('/videos/' + str(self._currentVideo.id) + '-' + self._currentVideo.filename)
 
-        self._lastUpdate = 0
-        self._step = 0 # reset step back to video
-        # https://github.com/yt-dlp/yt-dlp/blob/master/yt_dlp/YoutubeDL.py
-        ydl_opts = {
-            'verbose': True,
-            'logger': dlp_logger(),
-            'progress_hooks': [self._dlp_progress_hook],
-            'outtmpl': '/videos/' + str(id) + '-' + filename, # was '%(title)s.%(ext)s'
-            #'throttledratelimit': 1500,
-            'format_sort': ['res:' + resolution], # force resolution
-            'mark_watched': True,
-            'cookiefile': './db/cookies.txt',
-            'sponsorblock_remove': ['sponsor', 'preview'],
-        }
+        for format in self._formats:
+            self._lastUpdate = 0
+            self._step = 0 # reset step back to video
+            self._currentFormat = format
+            
+            # https://github.com/yt-dlp/yt-dlp/blob/master/yt_dlp/YoutubeDL.py
+            ydl_opts = {
+                'verbose': True,
+                'logger': dlp_logger(),
+                'progress_hooks': [self._dlp_progress_hook],
+                'outtmpl': '/videos/' + str(id) + '-' + format['name'] + '-' + filename, # was '%(title)s.%(ext)s'
+                #'throttledratelimit': 1500,
+                'format_sort': ['res:' + str(format['height'])], # force resolution
+                'mark_watched': True,
+                'cookiefile': './db/cookies.txt',
+                'sponsorblock_remove': ['sponsor', 'preview'],
+            }
 
-        # download
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            print('------------------------------- starting download')
-            ydl.download(url)
-            # post processing has finished and thread is about to close
-            # mark video as completed
-            print('------------------------------- completed')
-
-        with model.video.dataMutex():
+            # download
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                print('------------------------------- starting download')
+                ydl.download(url)
+                # post processing has finished and thread is about to close
+                # mark video as completed
+                print('------------------------------- completed')
+                
             # set time of file to now
             now = time.time()
-            fullFile = '/videos/' + str(id) + '-' + filename
+            fullFile = '/videos/' + str(id) + '-' + format['name'] + '-' + filename
             os.utime(fullFile, (now, now))
+            
+            self._previousWeight += format['weight']
+                
 
+        with model.video.dataMutex():
+            # determine width and height from best format
+            width = self._currentVideo.width
+            height = self._currentVideo.height
+            
+            if (height > bestHeight):
+                # resize
+                ratio = height / bestHeight
+                height = bestHeight
+                width = width / ratio
+            
             self._currentVideo.status = model.STATUS_COMPLETE
-            self._currentVideo.filesize = os.path.getsize(fullFile)
+            self._currentVideo.filesize = os.path.getsize('/videos/' + str(id) + '-' + self._formats[0]['name'] + '-' + filename)
             self._currentVideo.progress = None
+            self._currentVideo.width = width
+            self._currentVideo.height = height
             model.video.save(self._currentVideo, False)
 
             # broadcast video complete

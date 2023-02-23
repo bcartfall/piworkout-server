@@ -192,7 +192,6 @@ export default function Player({ controller, connected, }) {
         console.log('play next video');
         const nVideo = videos[index + 1];
 
-        playerRef.current = null;
         playerMounted.current = false;
         videoRef.current = null;
         videoMounted.current = false;
@@ -207,7 +206,6 @@ export default function Player({ controller, connected, }) {
         console.log('play previous video');
         const pVideo = videos[index - 1];
 
-        playerRef.current = null;
         playerMounted.current = false;
         videoRef.current = null;
         videoMounted.current = false;
@@ -250,7 +248,6 @@ export default function Player({ controller, connected, }) {
       }
 
       // play clicked on
-      playerRef.current = null;
       playerMounted.current = false;
       videoRef.current = null;
       videoMounted.current = false;
@@ -265,6 +262,19 @@ export default function Player({ controller, connected, }) {
     if (id) {
       for (let video of videos) {
         if (video.id === id) {
+          // determine resolution (browser based player will use best video possible)
+          let resolution = '';
+          if (video.height >= 2160) {
+            resolution = '4K';
+          } else if (video.height >= 1440) {
+            resolution = '1440p';
+          } else if (video.height >= 1080) {
+            resolution = '1080p';
+          } else {
+            resolution = '720p';
+          }
+          video.resolution = resolution;
+
           setCurrentVideo(video);
           controller.setCurrentVideo(video);
 
@@ -447,19 +457,6 @@ export default function Player({ controller, connected, }) {
       }
 
       // 
-      let resolution = '';
-      if (video.height >= 2160) {
-        resolution = '4K';
-      } else if (video.height >= 1440) {
-        resolution = '1440P';
-      } else if (video.height >= 1080) {
-        resolution = '1080P';
-      } else if (video.height >= 720) {
-        resolution = '720P';
-      } else {
-        resolution = '480P';
-      }
-
       let bitrate;
       if (currentVideo.tbr >= 1000) {
         bitrate = Math.round(currentVideo.tbr * 0.001) + 'M';
@@ -467,8 +464,7 @@ export default function Player({ controller, connected, }) {
         bitrate = (Math.round(currentVideo.tbr * 0.1) * 10) + 'K';
       }
 
-
-      setVideoInfo(resolution + '/' + currentVideo.fps + '/' + currentVideo.vcodec.toUpperCase() + '/' + bitrate);
+      setVideoInfo(currentVideo.resolution + '/' + currentVideo.fps + '/' + currentVideo.vcodec.toUpperCase() + '/' + bitrate);
 
       // setup windows mediasession
       if ('mediaSession' in navigator) {
@@ -611,10 +607,10 @@ export default function Player({ controller, connected, }) {
                 </div>
               </Fade>
               <video key={'video-' + currentVideo.id} ref={videoRef} style={{ width: '100%', height: '100%' }} autoPlay={false} muted={true} poster={controller.getVideoUrl(currentVideo.id + '-' + currentVideo.filename + '.jpg')}>
-                <source src={controller.getVideoUrl(currentVideo.id + '-' + currentVideo.filename)}></source>
+                <source src={controller.getVideoUrl(currentVideo.id + '-' + currentVideo.resolution + '-' + currentVideo.filename)}></source>
               </video>
               <audio key={'audio-' + currentVideo.id} ref={audioRef} autoPlay={false}>
-                <source src={controller.getVideoUrl(currentVideo.id + '-' + currentVideo.filename)} />
+                <source src={controller.getVideoUrl(currentVideo.id + '-' + currentVideo.resolution + '-' + currentVideo.filename)} />
               </audio>
               <Box ref={statusRef} onClick={(e) => { e.stopPropagation(); }} sx={{ position: 'absolute', display: 'flex', flexDirection: 'row', alignItems: 'center', width: '100%', pl: 0, pt: 0.5, pb: 0.5, height: '50px', bottom: (showStatus ? 0 : '-65px'), opacity: (showStatus ? 1 : 0), left: 0, textAlign: 'left', backgroundColor: 'rgba(0, 0, 0, 0.6)', transition: 'all 200ms ease-in-out' }}>
                 <Tooltip title="Previous (shift + p)" placement="top" disableInteractive>

@@ -13,7 +13,7 @@ export default function PiVideoPlayListItem({ video, controller, index, active, 
   let progress = 100, color;
   if (video.progress && video.progress.totalBytes) {
     // determine progress from how much has donwloaded
-    progress = Math.round(video.progress.downloadedBytes / video.progress.totalBytes * 10000) * 0.01;
+    progress = video.progress.progress * 100; // 0 to 100
     //console.log("downloading progress: " + progress, video.id, video.progress.downloadedBytes, video.progress.totalBytes)
     color = 'secondary';
   } else {

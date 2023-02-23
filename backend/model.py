@@ -32,7 +32,7 @@ STATUS_DELETED = 6
 db = sqlite3.connect('./db/database.sqlite3', check_same_thread=False) 
 mutex = threading.Lock()
 
-DEBUG = False # default False
+DEBUG = True # default False # set debug to true to delete the DB and redownload every video from the playlist
 
 # initialize database
 with mutex:
@@ -119,6 +119,7 @@ settings = SettingsModel(db, mutex)
 class VideoProgress:
     downloadedBytes: int = 0
     totalBytes: int = 0
+    progress: float = 0
     eta: int = 0
     speed: float = 0
     elapsed: float = 0
@@ -127,6 +128,7 @@ class VideoProgress:
         return {
             'downloadedBytes': self.downloadedBytes,
             'totalBytes': self.totalBytes,
+            'progress': self.progress,
             'eta': self.eta,
             'speed': self.speed,
             'elapsed': self.elapsed,
