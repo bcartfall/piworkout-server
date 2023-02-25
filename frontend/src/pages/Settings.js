@@ -64,10 +64,10 @@ export default function Settings(props) {
           </Typography>
           <Divider sx={{ m: 2 }} />
           <Grid container spacing={2}>
-            <Grid item xs={4}>
+            <Grid item xs={6}>
               <TextField fullWidth required label="Audio Delay (ms)" value={settings.audioDelay} onChange={(e) => onChange('audioDelay', e.target.value)} />
             </Grid>
-            <Grid item xs={4}>
+            <Grid item xs={6}>
               <FormControl fullWidth>
                 <InputLabel>Select Video Quality *</InputLabel>
                 <Select fullWidth required label="Select Video Quality *" value={settings.videoQuality} onChange={(e) => onChange('videoQuality', e.target.value)}>
