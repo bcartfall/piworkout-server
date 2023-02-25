@@ -22,7 +22,9 @@ async def receive(event, queue):
     """
     Handle message from client
     """
-    assert(event['namespace'])
+    if (not 'namespace' in event):
+        print('namespace not found in message')
+        return
     #print(event)
 
     # handle message
@@ -70,7 +72,14 @@ async def handler(websocket):
 
         # receive messages
         async for message in websocket:
-            await receive(json.loads(message), queue)
+            parsed = None
+            try:
+                parsed = json.loads(message)
+            except ValueError:
+                print('Decoding json message has failed.')
+                print(message)
+            if (parsed):
+                await receive(parsed, queue)
     finally:
         CLIENTS.remove(queue)
         relay_task.cancel()

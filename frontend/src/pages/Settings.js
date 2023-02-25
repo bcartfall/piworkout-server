@@ -68,9 +68,6 @@ export default function Settings(props) {
               <TextField fullWidth required label="Audio Delay (ms)" value={settings.audioDelay} onChange={(e) => onChange('audioDelay', e.target.value)} />
             </Grid>
             <Grid item xs={4}>
-              <TextField fullWidth required label="Network Delay (ms)" value={settings.networkDelay} onChange={(e) => onChange('networkDelay', e.target.value)} />
-            </Grid>
-            <Grid item xs={4}>
               <FormControl fullWidth>
                 <InputLabel>Select Video Quality *</InputLabel>
                 <Select fullWidth required label="Select Video Quality *" value={settings.videoQuality} onChange={(e) => onChange('videoQuality', e.target.value)}>

@@ -54,14 +54,11 @@ class ListFetchThread:
                 continue
 
             # check if file exists in model
-            found = False
-            p = path.find('-')
-            if (p == -1):
-                continue
-            searchFile = path[p + 1:]
+            a = path.split('-')
+            l = len(a)
 
             for video in model.video.items():
-                if (video.filename == searchFile):
+                if (video.filename == a[l - 1]):
                     # found don't delete
                     found = True
                     break

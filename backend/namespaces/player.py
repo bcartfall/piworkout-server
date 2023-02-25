@@ -11,26 +11,23 @@ STATUS_PAUSED = 2
 STATUS_PLAYING = 3
 STATUS_ENDED = 4
 
-MODEL = {
-    'time': 0,
-    'videoId': 0,
-    'status': 0,
-}
-
 class PlayerModel:
     time:float = 0
     videoId:int = 0
     status:int = 0
     client:str = '' # this client has control over the player, it will instruct other clients to play, pause, seek, etc
+    action:str = ''
 
     def toString(self):
-        return f'time={self.time},videoId={self.videoId},status={self.status}'
+        return f'time={self.time},videoId={self.videoId},status={self.status},action={self.action}'
 
     def toObject(self):
         return {
             'time': self.time,
             'videoId': self.videoId,
             'status': self.status,
+            'client': self.client,
+            'action': self.action,
         }
 
 MODEL = PlayerModel()
@@ -38,16 +35,20 @@ MODEL = PlayerModel()
 def receive(event, queue):
     print('player', event)
     if (event['action']):
-        if (event['action'] == 'progress'):
+        MODEL.action = event['action']
+        
+        if (event['action'] == 'progress' or event['action'] == 'seek'):
             MODEL.time = event['time']
         elif (event['action'] == 'play'):
             MODEL.client = event['source']
             MODEL.status = STATUS_PLAYING
             MODEL.videoId = event['videoId']
+            MODEL.time = event['time']
         elif (event['action'] == 'pause'):
             savePosition(event)
             MODEL.client = ''
             MODEL.status = STATUS_PAUSED
+            MODEL.time = event['time']
         elif (event['action'] == 'ended'):
             savePosition(event)
             MODEL.client = ''
@@ -56,6 +57,7 @@ def receive(event, queue):
             savePosition(event)
             MODEL.client = ''
             MODEL.status = STATUS_STOPPED
+            MODEL.time = event['time']
             
         # broadcast player status to all other clients
         server.broadcast({

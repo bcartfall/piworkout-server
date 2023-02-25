@@ -10,6 +10,11 @@ services:
       - "$APP_PORT:80"
     depends_on:
       - backend
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 128MB
   backend:
     build: ./backend/
     restart: always
@@ -23,3 +28,8 @@ services:
     volumes:
       - ./backend/:/app/backend
       - $VIDEO_FOLDER:/videos
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 256MB
