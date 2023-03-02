@@ -5,6 +5,8 @@ WORKDIR /app/backend
 # install ffmpeg for yt-dlp
 RUN apk add ffmpeg
 
+RUN apk add git
+
 # install pip requirements
 COPY ./requirements.txt /app/init/requirements.txt
 RUN cd /app/init/ && pip install --no-cache-dir -r requirements.txt

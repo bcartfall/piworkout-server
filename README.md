@@ -43,6 +43,12 @@ Run server docker containers:
 bash ./run.bash
 ```
 
+If there have been changes to the react frontend or if you haven't built the react frontend yet run:
+
+```bash
+bash ./build_react.bash
+```
+
 # Setup
 
 Open the web server in your browser `http://$APP_HOST:$APP_PORT`. Connect the application with your YouTube account. Set the `Playlist URL` in the settings. Copy (optional) your YouTube cookies to enable `Mark as Viewed` support.

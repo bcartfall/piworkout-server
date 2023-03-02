@@ -169,23 +169,23 @@ class Video:
         else:
             pObj = None
         return {
-            'id': self.id,
-            'order': self.order,
-            'videoId': self.videoId,
-            'source': self.source,
-            'url': self.url,
-            'filename': self.filename,
-            'filesize': self.filesize,
-            'title': self.title,
-            'description': self.description,
-            'duration': self.duration,
-            'position': self.position,
-            'width': self.width,
-            'height': self.height,
-            'tbr': self.tbr,
-            'fps': self.fps,
-            'vcodec': self.vcodec,
-            'status': self.status,
+            'id': int(self.id),
+            'order': int(self.order),
+            'videoId': str(self.videoId),
+            'source': str(self.source),
+            'url': str(self.url),
+            'filename': str(self.filename),
+            'filesize': int(self.filesize or 0),
+            'title': str(self.title),
+            'description': str(self.description),
+            'duration': int(self.duration),
+            'position': float(self.position),
+            'width': int(self.width),
+            'height': int(self.height),
+            'tbr': int(self.tbr),
+            'fps': int(self.fps),
+            'vcodec': str(self.vcodec),
+            'status': int(self.status),
             'progress': pObj,
 
             # additional
@@ -403,7 +403,7 @@ class VideoModel:
                     # ydl.sanitize_info makes the info json-serializable
                     #print('------------------------------- dumping ydl info')
                     # save info to file
-                    #print(json.dumps(ydl.sanitize_info(info)),  file=open('yt_dlp_video.json', 'w'))
+                    print(json.dumps(ydl.sanitize_info(info)),  file=open('yt_dlp_video.json', 'w'))
                     video = Video(
                         id=0, 
                         order=order, 

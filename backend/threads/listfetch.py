@@ -57,6 +57,7 @@ class ListFetchThread:
             a = path.split('-')
             l = len(a)
 
+            found = False
             for video in model.video.items():
                 if (video.filename == a[l - 1]):
                     # found don't delete

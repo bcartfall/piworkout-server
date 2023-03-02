@@ -58,7 +58,12 @@ class DownloaderThread:
         previousWeight = self._previousWeight
         weight = self._currentFormat['weight']
         
-        print('---------- progress_hook called '+ str(d.get('downloaded_bytes')) + '/' + str(d.get('total_bytes')) + ', status=' + d['status'] + ', filename=' + d['filename'] + ', weight=' + str(weight) + ', previousWeight=' + str(previousWeight))
+        totalBytes = d.get('total_bytes')
+        if (totalBytes == None):
+            totalBytes = d.get('total_bytes_estimate')
+        
+        print('---------- progress_hook called '+ str(d.get('downloaded_bytes')) + '/' + str(totalBytes) + ', status=' + d['status'] + 
+              ', filename=' + d['filename'] + ', weight=' + str(weight) + ', previousWeight=' + str(previousWeight) + ', speed=' + str(d.get('speed')))
         # store progress in memory for other calls
         with model.video.dataMutex():
             shouldBroadcast = False
@@ -66,7 +71,7 @@ class DownloaderThread:
             elapsed = now - self._lastUpdate
             if (elapsed >= 0.1 and self._step < 1):
                 shouldBroadcast = True
-            
+                
             #print('----' + d['status'])
             if d['status'] == 'finished':
                 shouldBroadcast = True
@@ -80,9 +85,9 @@ class DownloaderThread:
             elif d['status'] == 'downloading':
                 # determine progress
                 self._currentVideo.status = model.STATUS_DOWNLOADING_VIDEO
+                
                 self._currentVideo.progress.downloadedBytes = d.get('downloaded_bytes')
-                self._currentVideo.progress.totalBytes = d.get('total_bytes')
-                totalBytes = d.get('total_bytes')
+                self._currentVideo.progress.totalBytes = totalBytes
                 if (totalBytes > 0):
                     progress = previousWeight + (d.get('downloaded_bytes') / totalBytes * weight)
                     print('-- progress=' + str(progress))
