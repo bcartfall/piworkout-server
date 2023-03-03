@@ -15,7 +15,6 @@ class ListFetchThread:
     _shouldFetch = True
     _gcCounter = 60
     _wait = 60 # check every 60 seconds
-    _mutex = threading.Lock()
 
     def run(self):
         start = time.time()
@@ -76,6 +75,7 @@ class ListFetchThread:
 THREAD = ListFetchThread()
 
 def fetchOnNextCycle():
+    print('Setting _shouldFetch=True')
     THREAD._shouldFetch = True
 
 def _runThread():

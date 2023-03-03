@@ -25,6 +25,7 @@ class DownloaderThread:
     _currentVideo = None # current video that is downloading
     _lastUpdate = 0 # only update progress at specific intervals
     _step = 0 # 0 = video, 1 = audio
+    _totalBytesEstimate = 0
     _currentFormat = None
     _previousWeight = 0
     _formats = []
@@ -58,12 +59,6 @@ class DownloaderThread:
         previousWeight = self._previousWeight
         weight = self._currentFormat['weight']
         
-        totalBytes = d.get('total_bytes')
-        if (totalBytes == None):
-            totalBytes = d.get('total_bytes_estimate')
-        
-        print('---------- progress_hook called '+ str(d.get('downloaded_bytes')) + '/' + str(totalBytes) + ', status=' + d['status'] + 
-              ', filename=' + d['filename'] + ', weight=' + str(weight) + ', previousWeight=' + str(previousWeight) + ', speed=' + str(d.get('speed')))
         # store progress in memory for other calls
         with model.video.dataMutex():
             shouldBroadcast = False
@@ -75,6 +70,7 @@ class DownloaderThread:
             #print('----' + d['status'])
             if d['status'] == 'finished':
                 shouldBroadcast = True
+                self._totalBytesEstimate = 0
                 self._step += 1
                 if (self._step == 2):
                     print('---------- finished audio')
@@ -83,6 +79,15 @@ class DownloaderThread:
                     print('---------- finished video')
                     self._currentVideo.status = model.STATUS_DOWNLOADING_AUDIO
             elif d['status'] == 'downloading':
+                totalBytes = d.get("total_bytes")
+                if (totalBytes == None):
+                    est = int(d.get('total_bytes_estimate') or 0)
+                    if (est > self._totalBytesEstimate):
+                        self._totalBytesEstimate = est
+                    totalBytes = self._totalBytesEstimate
+                print('---------- progress_hook called threadId=' + str(threading.get_native_id()) + ', ' + str(d.get('downloaded_bytes')) + '/' + str(totalBytes) + ', status=' + d['status'] + 
+                    ', filename=' + d['filename'] + ', weight=' + str(weight) + ', previousWeight=' + str(previousWeight) + ', speed=' + str(d.get('speed')))
+                
                 # determine progress
                 self._currentVideo.status = model.STATUS_DOWNLOADING_VIDEO
                 
@@ -211,8 +216,8 @@ class DownloaderThread:
         for format in self._formats:
             self._lastUpdate = 0
             self._step = 0 # reset step back to video
-            self._currentFormat = format
-            
+            self._totalBytesEstimate = 0
+            self._currentFormat = format            
             # https://github.com/yt-dlp/yt-dlp/blob/master/yt_dlp/YoutubeDL.py
             ydl_opts = {
                 'verbose': True,
@@ -221,7 +226,7 @@ class DownloaderThread:
                 'outtmpl': '/videos/' + str(id) + '-' + format['name'] + '-' + filename, # was '%(title)s.%(ext)s'
                 #'throttledratelimit': 1500,
                 'format_sort': ['res:' + str(format['height'])], # force resolution
-                'mark_watched': True,
+                'mark_watched': True, # the mark watched func is overridden by the piworkoutpluginie plugin and the data is saved to the video model
                 'cookiefile': './db/cookies.txt',
                 'sponsorblock_remove': ['sponsor', 'preview'],
             }

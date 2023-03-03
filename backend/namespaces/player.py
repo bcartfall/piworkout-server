@@ -4,6 +4,14 @@
  * See README.md
 """
 
+import time
+import urllib.error
+import urllib.parse
+import random
+import http.cookiejar as cookielib
+import requests
+import json
+
 import model, server
 
 STATUS_STOPPED = 1
@@ -17,7 +25,11 @@ class PlayerModel:
     status:int = 0
     client:str = '' # this client has control over the player, it will instruct other clients to play, pause, seek, etc
     action:str = ''
-
+    
+    #
+    video = None
+    lastWatched:int = 0
+    
     def toString(self):
         return f'time={self.time},videoId={self.videoId},status={self.status},action={self.action}'
 
@@ -37,8 +49,19 @@ def receive(event, queue):
     if (event['action']):
         MODEL.action = event['action']
         
+        if (MODEL.video == None or MODEL.video.videoId != event['videoId']):
+            # load video into memory
+            MODEL.video = model.video.byId(event['videoId'], False)
+            if (MODEL.video == None):
+                print('Error: Video not found.')
+                return
+            
+        
         if (event['action'] == 'progress' or event['action'] == 'seek'):
             MODEL.time = event['time']
+            if (time.time() - MODEL.lastWatched >= 5):
+                # at 5 seconds have passed
+                markWatched()
         elif (event['action'] == 'play'):
             MODEL.client = event['source']
             MODEL.status = STATUS_PLAYING
@@ -66,14 +89,62 @@ def receive(event, queue):
         }, queue)
 
 def savePosition(event):
-    if (event['source'] == MODEL.client):
+    if (event['source'] == MODEL.client and MODEL.video != None):
         # update position for video in database
         with model.video.dataMutex():
-            video = model.video.byId(event['videoId'], False)
-            if (video == None):
-                print('Error: Video not found.')
-                return
-            video.position = event['time']
+            MODEL.video.position = event['time']
             if (event['action'] == 'ended'):
-                video.position = video.duration
-            model.video.save(video, False)
+                MODEL.video.position = MODEL.video.duration
+            model.video.save(MODEL.video, False)
+        # set watched position in youtube
+        markWatched()
+        
+def markWatched():
+    MODEL.lastWatched = time.time()
+    
+    if (MODEL.video == None):
+        return
+    
+    # send request to youtube
+    if (model.settings.get('youtubeCookie', '') == ''):
+        # no cookie set
+        return
+    
+    data = json.loads(MODEL.video.watchedUrl)
+    
+    cj = cookielib.MozillaCookieJar('./db/cookies.txt')
+    cj.load()
+    
+    for key in data:
+        item = data[key]
+        is_full = item['is_full']
+        
+        # taken from yt_dlp
+        parsed_url = urllib.parse.urlparse(item['url'])
+        qs = urllib.parse.parse_qs(parsed_url.query)
+
+        # cpn generation algorithm is reverse engineered from base.js.
+        # In fact it works even with dummy cpn.
+        CPN_ALPHABET = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_'
+        cpn = ''.join(CPN_ALPHABET[random.randint(0, 256) & 63] for _ in range(0, 16))
+
+        qs.update({
+            'ver': ['2'],
+            'cpn': [cpn],
+            'cmt': MODEL.video.position,
+            'el': 'detailpage',  # otherwise defaults to "shorts"
+        })
+
+        if is_full:
+            # these seem to mark watchtime "history" in the real world
+            # they're required, so send in a single value
+            qs.update({
+                'st': 0,
+                'et': MODEL.video.position,
+            })
+        
+        url = urllib.parse.urlunparse(
+            parsed_url._replace(query=urllib.parse.urlencode(qs, True)))
+        
+        r = requests.get(url, cookies=cj)
+    
