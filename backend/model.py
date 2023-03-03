@@ -17,8 +17,9 @@ import requests
 import yt_dlp
 import re
 import os
+import http.cookiejar as cookielib
 
-from threads import downloader
+from threads import downloader, listfetch
 from namespaces import videos
 
 #
@@ -71,6 +72,13 @@ class SettingsModel:
         with (self._dataMutex):
             for row in rows:
                 self._data[row[0]] = row[1]
+                
+        # init: load cookie file (if exists)
+        if (self.get('youtubeCookie', '') != ''):
+            cj = cookielib.MozillaCookieJar('./db/cookies.txt')
+            cj.load()
+            with listfetch.THREAD.queueMutex:
+                listfetch.THREAD.cj = cj
 
     def data(self, lock: bool = True):
         if (lock):

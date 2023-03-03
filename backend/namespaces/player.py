@@ -5,14 +5,9 @@
 """
 
 import time
-import urllib.error
-import urllib.parse
-import random
-import http.cookiejar as cookielib
-import requests
-import json
 
 import model, server
+from threads import listfetch
 
 STATUS_STOPPED = 1
 STATUS_PAUSED = 2
@@ -113,41 +108,6 @@ def markWatched():
         # no cookie set
         return
     
-    data = json.loads(MODEL.video.watchedUrl)
-    
-    cj = cookielib.MozillaCookieJar('./db/cookies.txt')
-    cj.load()
-    
-    for key in data:
-        item = data[key]
-        is_full = item['is_full']
-        
-        # taken from yt_dlp
-        parsed_url = urllib.parse.urlparse(item['url'])
-        qs = urllib.parse.parse_qs(parsed_url.query)
-
-        # cpn generation algorithm is reverse engineered from base.js.
-        # In fact it works even with dummy cpn.
-        CPN_ALPHABET = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_'
-        cpn = ''.join(CPN_ALPHABET[random.randint(0, 256) & 63] for _ in range(0, 16))
-
-        qs.update({
-            'ver': ['2'],
-            'cpn': [cpn],
-            'cmt': MODEL.video.position,
-            'el': 'detailpage',  # otherwise defaults to "shorts"
-        })
-
-        if is_full:
-            # these seem to mark watchtime "history" in the real world
-            # they're required, so send in a single value
-            qs.update({
-                'st': 0,
-                'et': MODEL.video.position,
-            })
-        
-        url = urllib.parse.urlunparse(
-            parsed_url._replace(query=urllib.parse.urlencode(qs, True)))
-        
-        r = requests.get(url, cookies=cj)
-    
+    # add to listfetch thread queue
+    with listfetch.THREAD.queueMutex:
+        listfetch.THREAD.markWatchedQueue.append(MODEL.video)

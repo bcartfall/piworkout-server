@@ -8,13 +8,21 @@ import threading
 import time
 import model
 import os
-import glob
+import http.cookiejar as cookielib
+import requests
+import urllib.error
+import urllib.parse
+import random
+import json
 
 class ListFetchThread:
     _running = True
     _shouldFetch = True
     _gcCounter = 60
     _wait = 60 # check every 60 seconds
+    markWatchedQueue = []
+    queueMutex = threading.Lock()
+    cj = None
 
     def run(self):
         start = time.time()
@@ -30,11 +38,62 @@ class ListFetchThread:
                 if (self._gcCounter >= 60):
                     self._gcCounter = 0
                     self.garbageCollect()
-            
-            time.sleep(0.033) # 30hz
+                    
+            with self.queueMutex:
+                if (len(self.markWatchedQueue) > 0):
+                    self.markWatched()
+            time.sleep(1) # one check per second
 
     def close(self):
         self._running = False
+        
+    def markWatched(self):
+        print('markWatched queue=' + str(len(self.markWatchedQueue)))
+        if (self.cj == None):
+            print('cookiejar not set.')
+            return
+        
+        # this is locked from run()
+        for video in self.markWatchedQueue:    
+            with model.video.dataMutex():
+                data = json.loads(video.watchedUrl)
+                position = video.position
+
+            keys = ['videostatsPlaybackUrl', 'videostatsWatchtimeUrl']
+            for key in keys:
+                item = data[key]
+                is_full = item['is_full']
+                
+                # taken from yt_dlp
+                parsed_url = urllib.parse.urlparse(item['url'])
+                qs = urllib.parse.parse_qs(parsed_url.query)
+
+                # cpn generation algorithm is reverse engineered from base.js.
+                # In fact it works even with dummy cpn.
+                CPN_ALPHABET = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_'
+                cpn = ''.join(CPN_ALPHABET[random.randint(0, 256) & 63] for _ in range(0, 16))
+
+                qs.update({
+                    'ver': ['2'],
+                    'cpn': [cpn],
+                    'cmt': position,
+                    'el': 'detailpage',  # otherwise defaults to "shorts"
+                })
+
+                if is_full:
+                    # these seem to mark watchtime "history" in the real world
+                    # they're required, so send in a single value
+                    qs.update({
+                        'st': 0,
+                        'et': position,
+                    })
+                
+                url = urllib.parse.urlunparse(
+                    parsed_url._replace(query=urllib.parse.urlencode(qs, True)))
+                requests.get(url, cookies=self.cj)
+                print(key, url)
+        # clear queue
+        self.markWatchedQueue = []
 
     def garbageCollect(self):
         """

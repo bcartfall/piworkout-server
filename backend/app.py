@@ -4,6 +4,8 @@
  * See README.md
 """
 
+import grequests 
+import requests
 import os
 
 import model, server
