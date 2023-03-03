@@ -38,6 +38,7 @@ export default function Player({ controller, connected, }) {
   const statusRef = useRef(null);
   const [videos,] = controller.videosUseState();
   const lastAction = useRef(new Date().getTime());
+  const lastMouseAction = useRef(new Date().getTime());
   const videoClick = useRef({
     count: 0, singleTimeout: 0, doubleTimeout: 0,
   });
@@ -107,19 +108,31 @@ export default function Player({ controller, connected, }) {
     if (action !== 'progress') {
       lastAction.current = new Date().getTime();
     }
+    if (action === 'mousemove' || action === 'mouseclick') {
+      lastMouseAction.current = new Date().getTime();
+    }
 
-    let show = true;
+    let showStatus = true;
+    const now = new Date().getTime();
 
     if (!video.paused && isFullScreen.current) {
-      // determine if should not show based on time since last action (e.g. mousemove)
-      const now = new Date().getTime();
+      // determine if status bar should not shown based on time since last action (e.g. seek)
       if (now - lastAction.current >= 3000) {
-        show = false;
+        showStatus = false;
       }
     }
 
-    setShowStatus(show);
-    setShowCursor(!isFullScreen.current || (show && isFullScreen.current));
+    let showCursor = false;
+    if (!isFullScreen.current || showPaused) {
+      // always show when not fullscreen or when paused
+      showCursor = true;
+    } else if (showStatus && now - lastMouseAction.current < 3000) {
+      // show if mouse action within 3s
+      showCursor = true;
+    }
+
+    setShowStatus(showStatus);
+    setShowCursor(showCursor);
   }, [videoRef, lastAction, isFullScreen, setShowStatus, setShowCursor,]);
 
   const onPlay = useCallback((e) => {
@@ -378,6 +391,8 @@ export default function Player({ controller, connected, }) {
         toggleFullscreen();
       }
     }
+
+    handleStatus('mouseclick');
   }, [togglePlay, videoClick, toggleFullscreen,]);
 
   const onMount = useCallback(() => {
@@ -496,6 +511,8 @@ export default function Player({ controller, connected, }) {
         navigator.mediaSession.setActionHandler('nexttrack', () => {
           skip('next');
         });
+
+        handleStatus('mount');
       }
     }
   }, [playerRef, videoRef, audioRef, controller, skip, onPlay, onEnded, onProgress, onPause, currentVideo, toggleFullscreen, updateVideoPosition, togglePlay, handleStatus,]);
