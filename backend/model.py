@@ -38,7 +38,7 @@ DEBUG = False # default False # set debug to true to delete the DB and redownloa
 with mutex:
     if (DEBUG):
         db.execute('DROP TABLE videos')
-    db.execute('CREATE TABLE IF NOT EXISTS videos (id INTEGER PRIMARY KEY, `order` INT, videoId VARCHAR(255), source VARCHAR(255), url VARCHAR(255), filename VARCHAR(255), filesize INT, title VARCHAR(255), description TEXT, duration INT, position FLOAT, width INT, height INT, tbr INT, fps INT, vcodec VARCHAR(255), status INT)')
+    db.execute('CREATE TABLE IF NOT EXISTS videos (id INTEGER PRIMARY KEY, `order` INT, videoId VARCHAR(255), source VARCHAR(255), url VARCHAR(255), filename VARCHAR(255), filesize INT, title VARCHAR(255), description TEXT, duration INT, position FLOAT, width INT, height INT, tbr INT, fps INT, vcodec VARCHAR(255), status INT, watchedUrl TEXT)')
     db.execute('CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY, name VARCHAR(255), value TEXT)')
     db.commit()
 
@@ -153,6 +153,7 @@ class Video:
     fps: int = 0
     vcodec: str = ''
     status: int = 0
+    watchedUrl: str = ''
     progress: VideoProgress = None
 
     # the following fields are only for cache and are only requested from YouTube when the video is played
@@ -216,7 +217,7 @@ class VideoModel:
         # load videos into memory
         with self._mutex:
             cursor = self._db.cursor()
-            cursor.execute('SELECT id, `order`, videoId, source, url, filename, filesize, title, description, duration, position, width, height, tbr, fps, vcodec, status FROM videos ORDER BY `order`')
+            cursor.execute('SELECT id, `order`, videoId, source, url, filename, filesize, title, description, duration, position, width, height, tbr, fps, vcodec, status, watchedUrl FROM videos ORDER BY `order`')
             rows = cursor.fetchall()
         with self._dataMutex:
             for row in rows:
@@ -238,6 +239,7 @@ class VideoModel:
                     fps=int(row[14] or 0),
                     vcodec=row[15],
                     status=int(row[16] or 0),
+                    watchedUrl=str(row[17] or ''),
                     channelName='', 
                     channelImageUrl='', 
                     date='', 
@@ -272,7 +274,7 @@ class VideoModel:
             self._dataMutex.acquire()
         with self._mutex:
             cursor = self._db.cursor()
-            cursor.execute('UPDATE videos SET `order` = ?, videoId = ?, source=?, url = ?, filename = ?, filesize = ?, title = ?, description = ?, duration = ?, position = ?, width = ?, height = ?, tbr = ?, fps = ?, vcodec = ?, status = ? WHERE id = ?', (video.order, video.videoId, video.source, video.url, video.filename, video.filesize, video.title, video.description, video.duration, video.position, video.width, video.height, video.tbr, video.fps, video.vcodec, video.status, video.id,))
+            cursor.execute('UPDATE videos SET `order` = ?, videoId = ?, source=?, url = ?, filename = ?, filesize = ?, title = ?, description = ?, duration = ?, position = ?, width = ?, height = ?, tbr = ?, fps = ?, vcodec = ?, status = ?, watchedUrl = ? WHERE id = ?', (video.order, video.videoId, video.source, video.url, video.filename, video.filesize, video.title, video.description, video.duration, video.position, video.width, video.height, video.tbr, video.fps, video.vcodec, video.status, video.watchedUrl, video.id,))
             self._db.commit()
         if (lock):
             self._dataMutex.release()
@@ -398,6 +400,7 @@ class VideoModel:
 
                 # set video information
                 with yt_dlp.YoutubeDL({}) as ydl:
+                    print('getting file information from youtube')
                     info = ydl.extract_info(url, download = False)
 
                     # ydl.sanitize_info makes the info json-serializable
@@ -412,7 +415,7 @@ class VideoModel:
                         url=url, 
                         title=info.get('title'),
                         filename=re.sub('[^a-zA-Z0-9]', '_', info.get('title')) + '.' + info.get('ext'),
-                        filesize=info.get('fs_approx'),
+                        filesize=info.get('filesize_approx'),
                         description=info.get('description'),
                         duration=info.get('duration'),
                         position=0,
@@ -433,9 +436,10 @@ class VideoModel:
                 with self._mutex:
                     # save to DB (if not exists)
                     cursor = self._db.cursor()
-                    cursor.execute('INSERT INTO videos (`order`, videoId, source, url, status) VALUES (?, ?, ?, ?, ?)', (video.order, video.videoId, video.source, video.url, video.status,))
+                    cursor.execute('INSERT INTO videos (videoId) VALUES (?)', (video.videoId,))
                     video.id = cursor.lastrowid
                     self._db.commit()
+                self.save(video = video, lock = False)
 
                 # save video thumbnail
                 path = '/videos/' + str(video.id) + '-' + video.filename + '.jpg'
@@ -491,5 +495,6 @@ class VideoModel:
 
         if (change):
             videos.broadcast()
+        print('done fetch')
 
 video = VideoModel(db, mutex, settings)
