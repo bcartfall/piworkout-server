@@ -131,7 +131,6 @@ class ListFetchThread:
             if (days >= 7):
                 print(f'Removing file {path}, days={days}')
                 os.remove(dir + path)
-                os.remove(dir + path + '.jpg')
 
 THREAD = ListFetchThread()
 

@@ -267,7 +267,7 @@ class DownloaderThread:
             model.video.save(self._currentVideo, False)
             
             # generate bif
-            if (not os.path.exists(fullFile + '.bif')):
+            if (not os.path.exists('/videos/' + str(id) + '-' + filename + '.bif')):
                 bifgenerator.append(self._currentVideo)
 
             # broadcast video complete

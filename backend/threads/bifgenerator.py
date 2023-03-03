@@ -12,7 +12,7 @@ import struct
 
 import model
 
-INTERVAL=10000 # time between storyboard images
+INTERVAL=5000 # time between storyboard images in ms
 
 class BifGeneratorThread:
     _running = True
@@ -41,6 +41,7 @@ class BifGeneratorThread:
         fullFilename = '/videos/' + str(id) + '-1080p-' + filename
         
         tmpFolder = '/tmp/biff/'
+        
         self._clean()
             
         # generate jpg images every 10s
@@ -57,32 +58,33 @@ class BifGeneratorThread:
         
         # create a bif file from images
         # see https://developer.roku.com/en-ca/docs/developer-program/media-playback/trick-mode/bif-file-creation.md
-        bifFilename = fullFilename + '.bif'
+        bifFilename = '/videos/' + str(id) + '-' + filename + '.bif'
         
         fp = open(bifFilename, 'wb')
         
-        I = struct.Struct('<I') # unsigned byte little-endian
+        I = struct.Struct('<I') # unsigned 4 bytes integer little-endian
         
-        # magic number
+        # magic number (0, 8 bytes)
         fp.write(bytearray([0x89, 0x42, 0x49, 0x46, 0x0d, 0x0a, 0x1a, 0x0a]))
         
-        # version
+        # version (8, 4 bytes)
         fp.write(I.pack(0))
         
-        # image count
+        # image count (12, 4 bytes)
         count = len(files)
         fp.write(I.pack(count))
         
-        # framewise separation: interval in ms
+        # framewise separation: interval in ms (16, 4 bytes)
+        b = I.pack(INTERVAL)
         fp.write(I.pack(INTERVAL))
         
         # reserved for future expansion
         ba = bytearray()
-        for i in range(20, 63):
+        for i in range(20, 64):
             ba.append(0x00)
         fp.write(ba)
                
-        # write the bif index
+        # write the bif index (64)
         index = 0
         offset = 64 + (8 * count) + 8
         for file in files:
@@ -97,7 +99,7 @@ class BifGeneratorThread:
         # terminate index
         fp.write(bytearray([0xff, 0xff, 0xff, 0xff]))
         fp.write(I.pack(offset))
-        
+               
         # data section: write all image data sequentially
         for file in files:
             with open(file, 'rb') as imagefp:
@@ -110,7 +112,7 @@ class BifGeneratorThread:
         fp.close()
         
         self._clean()
-        print('done generating bif for ' + fullFilename)
+        print('done generating bif: ' + bifFilename)
         
     def _clean(self):
         # clear tmp folder

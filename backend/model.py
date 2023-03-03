@@ -33,7 +33,7 @@ STATUS_DELETED = 6
 db = sqlite3.connect('./db/database.sqlite3', check_same_thread=False) 
 mutex = threading.Lock()
 
-DEBUG = True # default False # set debug to true to delete the DB and redownload every video from the playlist
+DEBUG = False # default False # set debug to true to delete the DB and redownload every video from the playlist
 
 # initialize database
 with mutex:
