@@ -4,12 +4,11 @@
  * See README.md
 """
 
-import grequests 
 import requests
 import os
 
 import model, server
-from threads import downloader, listfetch
+from threads import downloader, listfetch, bifgenerator
 
 def main():
     # allow localhost
@@ -18,6 +17,7 @@ def main():
     # threads
     downloader.run()
     listfetch.run()
+    bifgenerator.run()
 
     # socket server
     host = os.environ['BACKEND_HOST']
@@ -35,6 +35,7 @@ if __name__ == "__main__":
         # exit downloader thread gracefully
         downloader.close()
         listfetch.close()
+        bifgenerator.close()
 
         # close db
         model.close()

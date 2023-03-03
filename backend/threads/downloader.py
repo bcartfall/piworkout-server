@@ -17,6 +17,7 @@ import os
 
 import model, server
 from namespaces import videos
+from threads import bifgenerator
 
 class DownloaderThread:
     _running = True
@@ -210,7 +211,7 @@ class DownloaderThread:
                         'name': '720p',
                     },
                 ]
-
+                
         #print('/videos/' + str(self._currentVideo.id) + '-' + self._currentVideo.filename)
 
         for format in self._formats:
@@ -245,7 +246,6 @@ class DownloaderThread:
             os.utime(fullFile, (now, now))
             
             self._previousWeight += format['weight']
-                
 
         with model.video.dataMutex():
             # determine width and height from best format
@@ -259,11 +259,16 @@ class DownloaderThread:
                 width = width / ratio
             
             self._currentVideo.status = model.STATUS_COMPLETE
-            self._currentVideo.filesize = os.path.getsize('/videos/' + str(id) + '-' + self._formats[0]['name'] + '-' + filename)
+            fullFilename = '/videos/' + str(id) + '-' + self._formats[0]['name'] + '-' + filename
+            self._currentVideo.filesize = os.path.getsize(fullFilename)
             self._currentVideo.progress = None
             self._currentVideo.width = width
             self._currentVideo.height = height
             model.video.save(self._currentVideo, False)
+            
+            # generate bif
+            if (not os.path.exists(fullFile + '.bif')):
+                bifgenerator.append(self._currentVideo)
 
             # broadcast video complete
             server.broadcast({

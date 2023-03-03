@@ -39,61 +39,63 @@ class ListFetchThread:
                     self._gcCounter = 0
                     self.garbageCollect()
                     
+            # determine if there is a video to mark watched in queue
+            video = None
             with self.queueMutex:
                 if (len(self.markWatchedQueue) > 0):
-                    self.markWatched()
-            time.sleep(1) # one check per second
+                    video = self.markWatchedQueue.pop(0)
+            if (video != None):
+                self.markWatched(video)
+            
+            time.sleep(1) 
 
     def close(self):
         self._running = False
         
-    def markWatched(self):
-        print('markWatched queue=' + str(len(self.markWatchedQueue)))
+    def markWatched(self, video):
+        print('markWatched()')
         if (self.cj == None):
             print('cookiejar not set.')
             return
         
         # this is locked from run()
-        for video in self.markWatchedQueue:    
-            with model.video.dataMutex():
-                data = json.loads(video.watchedUrl)
-                position = video.position
+        with model.video.dataMutex():
+            data = json.loads(video.watchedUrl)
+            position = video.position
 
-            keys = ['videostatsPlaybackUrl', 'videostatsWatchtimeUrl']
-            for key in keys:
-                item = data[key]
-                is_full = item['is_full']
-                
-                # taken from yt_dlp
-                parsed_url = urllib.parse.urlparse(item['url'])
-                qs = urllib.parse.parse_qs(parsed_url.query)
+        keys = ['videostatsPlaybackUrl', 'videostatsWatchtimeUrl']
+        for key in keys:
+            item = data[key]
+            is_full = item['is_full']
+            
+            # taken from yt_dlp
+            parsed_url = urllib.parse.urlparse(item['url'])
+            qs = urllib.parse.parse_qs(parsed_url.query)
 
-                # cpn generation algorithm is reverse engineered from base.js.
-                # In fact it works even with dummy cpn.
-                CPN_ALPHABET = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_'
-                cpn = ''.join(CPN_ALPHABET[random.randint(0, 256) & 63] for _ in range(0, 16))
+            # cpn generation algorithm is reverse engineered from base.js.
+            # In fact it works even with dummy cpn.
+            CPN_ALPHABET = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_'
+            cpn = ''.join(CPN_ALPHABET[random.randint(0, 256) & 63] for _ in range(0, 16))
 
+            qs.update({
+                'ver': ['2'],
+                'cpn': [cpn],
+                'cmt': position,
+                'el': 'detailpage',  # otherwise defaults to "shorts"
+            })
+
+            if is_full:
+                # these seem to mark watchtime "history" in the real world
+                # they're required, so send in a single value
                 qs.update({
-                    'ver': ['2'],
-                    'cpn': [cpn],
-                    'cmt': position,
-                    'el': 'detailpage',  # otherwise defaults to "shorts"
+                    'st': 0,
+                    'et': position,
                 })
-
-                if is_full:
-                    # these seem to mark watchtime "history" in the real world
-                    # they're required, so send in a single value
-                    qs.update({
-                        'st': 0,
-                        'et': position,
-                    })
-                
-                url = urllib.parse.urlunparse(
-                    parsed_url._replace(query=urllib.parse.urlencode(qs, True)))
-                requests.get(url, cookies=self.cj)
-                print(key, url)
-        # clear queue
-        self.markWatchedQueue = []
+            
+            url = urllib.parse.urlunparse(
+                parsed_url._replace(query=urllib.parse.urlencode(qs, True)))
+            requests.get(url, cookies=self.cj)
+            #print(key, url)
 
     def garbageCollect(self):
         """

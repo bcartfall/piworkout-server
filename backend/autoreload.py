@@ -66,6 +66,7 @@ class SourceChangeMonitor(threading.Thread):
 
         def start_program(self):
                 """                                                                                                                          Start the program. If it was already started, kill it before restarting                                                      """
+                subprocess.call(['pkill', 'ffmpeg']) # close any zombie ffmpeg processes
                 if self._process != None and self._process.poll() is None:
                         self._process.kill()
                         self._process.wait()
