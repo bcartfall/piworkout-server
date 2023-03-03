@@ -65,6 +65,7 @@ async def handler(websocket):
                 'settings': settings.data(),
                 'connected': model.settings.get('youtubeApiToken', '') != '',
                 'videos': videos.data(),
+                'player': player.data(),
             },
         }
 

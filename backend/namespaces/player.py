@@ -44,6 +44,9 @@ class PlayerModel:
 
 MODEL = PlayerModel()
 
+def data():
+    return MODEL.toObject()    
+
 def receive(event, queue):
     print('player', event)
     if (event['action']):
@@ -85,7 +88,7 @@ def receive(event, queue):
         # broadcast player status to all other clients
         server.broadcast({
             'namespace': 'player',
-            'player': MODEL.toObject(),
+            'player': data(),
         }, queue)
 
 def savePosition(event):
