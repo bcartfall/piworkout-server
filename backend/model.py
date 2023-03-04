@@ -367,7 +367,12 @@ class VideoModel:
             api_service_name, api_version, credentials=credentials)
 
         # get playlistId
-        parsed = urlparse(self._settings.get('playlistUrl'))
+        playerlistUrl = self._settings.get('playlistUrl', '')
+        if (playerlistUrl == ''):
+            print('playlistUrl not set')
+            return
+            
+        parsed = urlparse(playerlistUrl)
         if (parsed.scheme == ''):
             # just an ID
             playlistId = parsed.path
