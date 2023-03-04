@@ -1,5 +1,5 @@
-#yt-dlp
-git+https://github.com/yt-dlp/yt-dlp.git@master#egg=yt-dlp
+yt-dlp
+#git+https://github.com/yt-dlp/yt-dlp.git@master#egg=yt-dlp
 google-api-python-client
 google-auth-oauthlib
 google-auth-httplib2

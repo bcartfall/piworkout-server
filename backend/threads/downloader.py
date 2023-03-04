@@ -17,7 +17,7 @@ import os
 
 import model, server
 from namespaces import videos
-from threads import bifgenerator
+from threads import sbgenerator
 
 class DownloaderThread:
     _running = True
@@ -266,9 +266,9 @@ class DownloaderThread:
             self._currentVideo.height = height
             model.video.save(self._currentVideo, False)
             
-            # generate bif
-            if (not os.path.exists('/videos/' + str(id) + '-' + filename + '.bif')):
-                bifgenerator.append(self._currentVideo)
+            # generate storyboard
+            if (not os.path.exists('/videos/' + str(id) + '-' + filename + '.sbb')):
+                sbgenerator.append(self._currentVideo)
 
             # broadcast video complete
             server.broadcast({

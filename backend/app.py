@@ -8,7 +8,7 @@ import requests
 import os
 
 import model, server
-from threads import downloader, listfetch, bifgenerator
+from threads import downloader, listfetch, sbgenerator
 
 def main():
     # allow localhost
@@ -17,15 +17,13 @@ def main():
     # threads
     downloader.run()
     listfetch.run()
-    bifgenerator.run()
+    sbgenerator.run()
 
     # socket server
     host = os.environ['BACKEND_HOST']
     port = os.environ['BACKEND_PORT']
     print('Starting websocket on ' + host + ':' + port)
     server.start()
-
-
 
 if __name__ == "__main__":
     try:
@@ -35,7 +33,7 @@ if __name__ == "__main__":
         # exit downloader thread gracefully
         downloader.close()
         listfetch.close()
-        bifgenerator.close()
+        sbgenerator.close()
 
         # close db
         model.close()

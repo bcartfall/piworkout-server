@@ -19,7 +19,7 @@ import re
 import os
 import http.cookiejar as cookielib
 
-from threads import downloader, listfetch
+from threads import downloader, listfetch, sbgenerator
 from namespaces import videos
 
 #
@@ -259,6 +259,12 @@ class VideoModel:
                 if (video.status == STATUS_INIT):
                     # add to downloader queue
                     downloader.THREAD.append(video)
+                    
+                if (not os.path.exists('/videos/' + str(video.id) + '-' + video.filename + '.sbb')):
+                    # generate sb
+                    sbgenerator.append(video)
+
+                
 
     def data(self, copy:bool = True, lock:bool = True):
         if (lock):
