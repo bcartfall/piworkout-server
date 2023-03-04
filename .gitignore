@@ -9,4 +9,4 @@ backend/db/cookies.txt
 backend/db/database.sqlite3
 videos/*
 !videos/README.md
-yt_dlp_video.json
+backend/yt_dlp_video.json

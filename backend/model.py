@@ -390,86 +390,86 @@ class VideoModel:
         order = 0
         change = False
         # create video class
+        # make sure youtube videos stay in order
+        ytVideos = []
+
+        for item in response['items']:
+            #print(json.dumps(item))
+            order = 0
+            videoId = item['contentDetails']['videoId']
+            url = f'https://www.youtube.com/watch?v={videoId}'
+
+            with self._mutex:
+                # check if exists in DB
+                cursor = self._db.cursor()
+                cursor.execute('SELECT id FROM videos WHERE videoId = ?', (videoId,))
+                row = cursor.fetchone()
+                if (row != None):
+                    # found
+                    print(f' Already exists videoId={videoId}')
+                    ytVideos.append(self.byVideoId(videoId=videoId, lock=False))
+                    continue
+
+            # set video information
+            with yt_dlp.YoutubeDL({}) as ydl:
+                print('getting file information from youtube')
+                info = ydl.extract_info(url, download = False)
+
+                # ydl.sanitize_info makes the info json-serializable
+                #print('------------------------------- dumping ydl info')
+                # save info to file
+                #print(json.dumps(ydl.sanitize_info(info)),  file=open('yt_dlp_video.json', 'w'))
+                video = Video(
+                    id=0, 
+                    order=order, 
+                    videoId=videoId, 
+                    source='youtube', 
+                    url=url, 
+                    title=info.get('title'),
+                    filename=re.sub('[^a-zA-Z0-9]', '_', info.get('title')) + '.' + info.get('ext'),
+                    filesize=info.get('filesize_approx'),
+                    description=info.get('description'),
+                    duration=info.get('duration'),
+                    position=0,
+                    width=info.get('width'),
+                    height=info.get('height'),
+                    tbr=info.get('tbr'),
+                    fps=info.get('fps'),
+                    vcodec=info.get('vcodec'),
+                    status=STATUS_INIT,
+                    progress=None
+                )
+
+                thumbnailUrl = info.get('thumbnail')
+
+            # save to DB
+            ytVideos.append(video)
+            change = True
+            with self._mutex:
+                # save to DB (if not exists)
+                cursor = self._db.cursor()
+                cursor.execute('INSERT INTO videos (videoId) VALUES (?)', (video.videoId,))
+                video.id = cursor.lastrowid
+                self._db.commit()
+            self.save(video = video, lock = False)
+
+            # save video thumbnail
+            path = '/videos/' + str(video.id) + '-' + video.filename + '.jpg'
+            if (not os.path.exists(path)):
+                data = requests.get(thumbnailUrl).content
+                f = open(path, 'wb')
+                f.write(data)
+                f.close()
+
+            # add to items and add to downloader queue
+            print(f' Adding videoId={video.videoId}')
+            self._items.append(video)
+
+            # add to downloader queue
+            downloader.THREAD.append(video)
+
+        # check for deleted youtube videos
         with self._dataMutex:
-            # make sure youtube videos stay in order
-            ytVideos = []
-
-            for item in response['items']:
-                #print(json.dumps(item))
-                order = 0
-                videoId = item['contentDetails']['videoId']
-                url = f'https://www.youtube.com/watch?v={videoId}'
-
-                with self._mutex:
-                    # check if exists in DB
-                    cursor = self._db.cursor()
-                    cursor.execute('SELECT id FROM videos WHERE videoId = ?', (videoId,))
-                    row = cursor.fetchone()
-                    if (row != None):
-                        # found
-                        print(f' Already exists videoId={videoId}')
-                        ytVideos.append(self.byVideoId(videoId=videoId, lock=False))
-                        continue
-
-                # set video information
-                with yt_dlp.YoutubeDL({}) as ydl:
-                    print('getting file information from youtube')
-                    info = ydl.extract_info(url, download = False)
-
-                    # ydl.sanitize_info makes the info json-serializable
-                    #print('------------------------------- dumping ydl info')
-                    # save info to file
-                    print(json.dumps(ydl.sanitize_info(info)),  file=open('yt_dlp_video.json', 'w'))
-                    video = Video(
-                        id=0, 
-                        order=order, 
-                        videoId=videoId, 
-                        source='youtube', 
-                        url=url, 
-                        title=info.get('title'),
-                        filename=re.sub('[^a-zA-Z0-9]', '_', info.get('title')) + '.' + info.get('ext'),
-                        filesize=info.get('filesize_approx'),
-                        description=info.get('description'),
-                        duration=info.get('duration'),
-                        position=0,
-                        width=info.get('width'),
-                        height=info.get('height'),
-                        tbr=info.get('tbr'),
-                        fps=info.get('fps'),
-                        vcodec=info.get('vcodec'),
-                        status=STATUS_INIT,
-                        progress=None
-                    )
-
-                    thumbnailUrl = info.get('thumbnail')
-
-                # save to DB
-                ytVideos.append(video)
-                change = True
-                with self._mutex:
-                    # save to DB (if not exists)
-                    cursor = self._db.cursor()
-                    cursor.execute('INSERT INTO videos (videoId) VALUES (?)', (video.videoId,))
-                    video.id = cursor.lastrowid
-                    self._db.commit()
-                self.save(video = video, lock = False)
-
-                # save video thumbnail
-                path = '/videos/' + str(video.id) + '-' + video.filename + '.jpg'
-                if (not os.path.exists(path)):
-                    data = requests.get(thumbnailUrl).content
-                    f = open(path, 'wb')
-                    f.write(data)
-                    f.close()
-
-                # add to items and add to downloader queue
-                print(f' Adding videoId={video.videoId}')
-                self._items.append(video)
-
-                # add to downloader queue
-                downloader.THREAD.append(video)
-
-            # check for deleted youtube videos
             for video in self._items.copy():
                 if video.source != 'youtube':
                     continue
@@ -483,12 +483,13 @@ class VideoModel:
                     #print('  removing id=' + str(video.id) + ', videoId=' + video.videoId)
                     self.remove(video, False)
                     change = True
-                    
-            # create a new array with all youtube source videos in order provided from playlist
-            ytIndex = -1
-            ytLength = len(ytVideos)
-            nItems = []
+                
+        # create a new array with all youtube source videos in order provided from playlist
+        ytIndex = -1
+        ytLength = len(ytVideos)
+        nItems = []
 
+        with self._dataMutex:
             for index, video in enumerate(self._items):
                 if (video.source == 'youtube' and ytIndex < ytLength - 1):
                     ytIndex += 1
