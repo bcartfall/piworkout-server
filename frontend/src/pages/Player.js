@@ -133,7 +133,7 @@ export default function Player({ controller, connected, }) {
 
     setShowStatus(showStatus);
     setShowCursor(showCursor);
-  }, [videoRef, lastAction, isFullScreen, setShowStatus, setShowCursor,]);
+  }, [videoRef, lastAction, isFullScreen, setShowStatus, setShowCursor, showPaused,]);
 
   const onPlay = useCallback((e) => {
     controller.syncAudio('play');
@@ -393,7 +393,7 @@ export default function Player({ controller, connected, }) {
     }
 
     handleStatus('mouseclick');
-  }, [togglePlay, videoClick, toggleFullscreen,]);
+  }, [togglePlay, videoClick, toggleFullscreen, handleStatus,]);
 
   const onMount = useCallback(() => {
     const video = videoRef.current;
@@ -666,7 +666,7 @@ export default function Player({ controller, connected, }) {
                   </Tooltip>
                 </Box>
                 <Box sx={{ position: 'absolute', left: 0, top: '-15px', width: '100%' }}>
-                  <VideoPlayerProgress currentVideo={currentVideo} progress={progress} onChangeProgress={onChangeProgress} />
+                  <VideoPlayerProgress controller={controller} currentVideo={currentVideo} progress={progress} onChangeProgress={onChangeProgress} />
                 </Box>
               </Box>
             </Box>
