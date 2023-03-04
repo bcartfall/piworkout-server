@@ -7,20 +7,15 @@
 import jDataView from 'jdataview';
 import { Buffer } from 'buffer';
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { LinearProgress, Tooltip } from '@mui/material';
+import React, { useRef, useEffect, useCallback } from 'react';
+import { LinearProgress } from '@mui/material';
 
 export default function VideoPlayerProgress({ currentVideo, progress, onChangeProgress, controller }) {
-  const [seekTooltip, setSeekTooltip] = useState('0:00');
-  const positionRef = useRef({
-    x: 0,
-    y: 0,
-  });
-  const popperRef = useRef(null);
   const progressRef = useRef(null);
   const bif = useRef(null);
   const storyBoardImage = useRef(null);
   const mouseState = useRef('up');
+  const tooltip = useRef(null);
 
   const onMouseMove = (event) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -38,13 +33,16 @@ export default function VideoPlayerProgress({ currentVideo, progress, onChangePr
     }
     duration += minutes.padStart(2, '0') + ':' + seconds.padStart(2, '0');
 
-    setSeekTooltip(duration);
+    if (tooltip.current) {
+      // set tooltip position and text
+      tooltip.current.innerHTML = duration; 
+      let ttWidth = tooltip.current.offsetWidth;
 
-    // tooltip follows mouse on x only
-    positionRef.current = { x: event.clientX, y: event.clientY };
-
-    if (popperRef.current != null) {
-      popperRef.current.update();
+      let ttX = Math.max(x - (ttWidth / 2), 0);
+      if (ttX + ttWidth > rect.width) {
+        ttX = rect.width - ttWidth;
+      }
+      tooltip.current.style.left = ttX + 'px';
     }
 
     if (storyBoardImage.current) {
@@ -64,12 +62,18 @@ export default function VideoPlayerProgress({ currentVideo, progress, onChangePr
   };
 
   const onMouseEnter = useCallback(() => {
+    if (tooltip.current) {
+      tooltip.current.style.display = 'block';
+    }
     if (storyBoardImage.current && bif.current && bif.current[currentVideo.id]) {
       storyBoardImage.current.style.display = 'block';
     }
   }, [storyBoardImage, bif, currentVideo,]);
 
   const onMouseLeave = (event) => {
+    if (tooltip.current) {
+      tooltip.current.style.display = 'none';
+    }
     if (storyBoardImage.current) {
       storyBoardImage.current.style.display = 'none';
     }
@@ -189,28 +193,8 @@ export default function VideoPlayerProgress({ currentVideo, progress, onChangePr
 
   return (
     <>
-      <Tooltip
-        title={seekTooltip}
-        placement="top"
-        arrow
-        enterDelay={0}
-        leaveDelay={0}
-        PopperProps={{
-          popperRef,
-          anchorEl: {
-            getBoundingClientRect: () => {
-              return new DOMRect(
-                positionRef.current.x,
-                progressRef.current.getBoundingClientRect().y + 0,
-                0,
-                0,
-              );
-            },
-          },
-        }}
-      >
-        <LinearProgress ref={progressRef} variant="determinate" className="videoPlayerProgress" value={progress} sx={{ height: '15px', cursor: 'pointer' }} onMouseDown={onMouseDown} onMouseUp={onMouseUp} onMouseMove={onMouseMove} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} />
-      </Tooltip>
+      <LinearProgress ref={progressRef} variant="determinate" className="videoPlayerProgress" value={progress} sx={{ height: '15px', cursor: 'pointer' }} onMousfDown={onMouseDown} onMouseUp={onMouseUp} onMouseMove={onMouseMove} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} />
+      <span ref={tooltip} style={{ position: 'absolute', width: 'auto', padding: '4px 8px', textAlign: 'center', fontSize: '0.8rem', zIndex: '1', top: '-35px', borderRadius: '4px', backgroundColor: '#444', color: '#fff', display: 'none' }}>0:00</span>
       <img ref={storyBoardImage} src="" alt="Story Board" style={{ position: 'absolute', width: '320px', height: '180px', zIndex: '1', top: '-226px', borderRadius: '8px', border: '2px solid white', display: 'none' }} />
     </>
   );

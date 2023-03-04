@@ -83,7 +83,11 @@ export default function Player({ controller, connected, }) {
         b += bH.padStart(2, '0') + ':';
       }
       b += bM.padStart(2, '0') + ':' + bS.padStart(2, '0');
-      setStatusTime(a + ' / ' + b);
+
+      const newTime = a + ' / ' + b;
+      if (statusTime !== newTime) {
+        setStatusTime(newTime);
+      }
     }
 
     // update videos to have correct position for this video
@@ -97,7 +101,7 @@ export default function Player({ controller, connected, }) {
         break;
       }
     }
-  }, [controller, setStatusTime,]);
+  }, [controller, statusTime, setStatusTime,]);
 
   const handleStatus = useCallback((action) => {
     const video = videoRef.current;
