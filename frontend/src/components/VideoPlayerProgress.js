@@ -12,8 +12,8 @@ import { LinearProgress } from '@mui/material';
 
 export default function VideoPlayerProgress({ currentVideo, progress, onChangeProgress, controller }) {
   const progressRef = useRef(null);
-  const bif = useRef(null);
-  const storyBoardImage = useRef(null);
+  const sbb = useRef(null);
+  const storyBoardSpriteMap = useRef(null);
   const mouseState = useRef('up');
   const tooltip = useRef(null);
 
@@ -45,15 +45,18 @@ export default function VideoPlayerProgress({ currentVideo, progress, onChangePr
       tooltip.current.style.left = ttX + 'px';
     }
 
-    if (storyBoardImage.current) {
-      // set storyboard image
-      storyBoardImage.current.src = getStoryboard(time);
+    if (storyBoardSpriteMap.current) {
+      // set storyboard sprite map
+      updateStoryBoard(time, storyBoardSpriteMap.current)
 
-      let sbX = Math.max(x - 160, 0);
-      if (sbX + 320 > rect.width) {
-        sbX = rect.width - 320;
+      let sbW = storyBoardSpriteMap.current.offsetWidth, sbH = storyBoardSpriteMap.current.offsetHeight;
+
+      let sbX = Math.max(x - (sbW / 2), 0);
+      if (sbX + sbW > rect.width) {
+        sbX = rect.width - sbW;
       }
-      storyBoardImage.current.style.left = sbX + 'px';
+      storyBoardSpriteMap.current.style.left = sbX + 'px';
+      storyBoardSpriteMap.current.style.top = (-sbH - 46) + 'px';
     }
 
     if (mouseState.current === 'down') {
@@ -65,17 +68,17 @@ export default function VideoPlayerProgress({ currentVideo, progress, onChangePr
     if (tooltip.current) {
       tooltip.current.style.display = 'block';
     }
-    if (storyBoardImage.current && bif.current && bif.current[currentVideo.id]) {
-      storyBoardImage.current.style.display = 'block';
+    if (storyBoardSpriteMap.current && sbb.current && sbb.current[currentVideo.id]) {
+      storyBoardSpriteMap.current.style.display = 'block';
     }
-  }, [storyBoardImage, bif, currentVideo,]);
+  }, [storyBoardSpriteMap, sbb, currentVideo,]);
 
   const onMouseLeave = (event) => {
     if (tooltip.current) {
       tooltip.current.style.display = 'none';
     }
-    if (storyBoardImage.current) {
-      storyBoardImage.current.style.display = 'none';
+    if (storyBoardSpriteMap.current) {
+      storyBoardSpriteMap.current.style.display = 'none';
     }
 
     if (mouseState.current === 'down') {
@@ -104,37 +107,70 @@ export default function VideoPlayerProgress({ currentVideo, progress, onChangePr
     mouseState.current = 'up';
   };
 
-  const getStoryboard = useCallback((position) => {
-    let buffer = 'data:image/jpeg;base64,';
-    if (!bif.current) {
-      return buffer;
+  const updateStoryBoard = useCallback((position, spriteMap) => {
+    let buffer = '';
+    if (!sbb.current) {
+      spriteMap.style.backgroundImage = `url('data:image/jpeg;base64,${buffer}')`;
+      spriteMap.style.backgroundPosition = '0px 0px';
     }
 
-    if (!bif.current[currentVideo.id]) {
-      return buffer;
+    if (!sbb.current[currentVideo.id]) {
+      spriteMap.style.backgroundImage = `url('data:image/jpeg;base64,${buffer}')`;
+      spriteMap.style.backgroundPosition = '0px 0px';
     }
-    const obj = bif.current[currentVideo.id];
+    const obj = sbb.current[currentVideo.id];
 
-    const index = Math.floor(position / (obj.interval / 1000));
-    const frame = obj.bifIndex[index];
+    // get frame
+    let iTime = 0, frameIndex = -1, frame = null, elapsed = -1;
+    //console.log(obj.sbbIndex);
+    for (let i in obj.sbbIndex) {
+      const tFrame = obj.sbbIndex[i];
+      iTime += tFrame.duration;
+
+      if (position <= iTime) {
+        // found frame
+        frameIndex = i;
+        frame = tFrame;
+        elapsed = position - (iTime - tFrame.duration); // time elapsed in this frame
+        break;
+      }
+    }
+
+    // todo determine the x, y of the spriteMap
+
+    const frameKey = `${frameIndex}`;
+    //console.log('found frame', frameKey, obj.lastFrameKey)
     if (!frame) {
-      return buffer;
+      return;
+    }
+    if (obj.lastFrameKey !== frameKey) {
+      obj.lastFrameKey = frameKey;
+      buffer = Buffer.from(new Uint8Array(obj.arrayBuffer.slice(frame.offset, frame.offset + frame.size))).toString('base64');
+      spriteMap.style.backgroundImage = `url('data:image/jpeg;base64,${buffer}')`;
     }
 
-    // buf.toString('base64')
-    buffer += Buffer.from(new Uint8Array(obj.arrayBuffer.slice(frame.offset, frame.offset + frame.length))).toString('base64');
+    // set storyboard image width and height
+    spriteMap.style.width = obj.width + 'px';
+    spriteMap.style.height = obj.height + 'px';
 
-    //buffer += btoa(String.fromCharCode.apply(null, new Uint8Array(obj.arrayBuffer.slice(frame.offset, frame.offset + frame.length))));
-    return buffer;
-  }, [bif, currentVideo,]);
+    // dermine position in spritemap based on fps and frame.duration
+    const p = Math.floor(elapsed * obj.fps);
+    console.log(p, obj.columns);
+    const y = Math.floor(p / obj.columns),
+      x = p % obj.columns;
+
+    // set position of sprite map
+    spriteMap.style.backgroundPosition = (-(x * obj.width)) + 'px ' + (-(y * obj.height)) + 'px';
+
+  }, [sbb, currentVideo,]);
 
   useEffect(() => {
-    if (!bif.current) {
-      bif.current = {};
+    if (!sbb.current) {
+      sbb.current = {};
     }
-    if (!bif.current || !bif.current[currentVideo.id]) {
-      const url = controller.getVideoUrl(currentVideo.id + '-' + currentVideo.filename + '.bif')
-      console.log('Loading bif file.', url);
+    if (!sbb.current || !sbb.current[currentVideo.id]) {
+      const url = controller.getVideoUrl(currentVideo.id + '-' + currentVideo.filename + '.sbb')
+      console.log('Loading sbb file.', url);
 
       const request = new XMLHttpRequest();
 
@@ -156,46 +192,55 @@ export default function VideoPlayerProgress({ currentVideo, progress, onChangePr
         // number of images
         const imagesCount = data.getUint32(12, true);
 
-        // framewise seperation
-        const interval = data.getUint32(16, true);
+        // frame width and height
+        const width = data.getUint32(16, true);
+        const height = data.getUint32(20, true);
+
+        // story board frames
+        const fps = data.getFloat64(24, true);
+
+        // number of cols and rows in each image
+        const rows = data.getUint32(32, true);
+        const columns = data.getUint32(36, true);
 
         // index
-        let bifIndex = [];
+        let sbbIndex = [];
         let indexOffset = 64;
         for (let i = 0; i < imagesCount; i++) {
-          const index = data.getUint32(indexOffset, true);
-          const offset = data.getUint32(indexOffset + 4, true); // image offset
-          const nextOffset = data.getUint32(indexOffset + 12, true); // next image offset
-
           const a = {
-            index,
-            offset,
-            length: nextOffset - offset,
+            index: data.getUint32(indexOffset, true),
+            offset: data.getUint32(indexOffset + 4, true),
+            size: data.getUint32(indexOffset + 8, true),
+            duration: data.getFloat64(indexOffset + 12, true),
           };
-          bifIndex.push(a);
-          //console.log(a);
-          indexOffset += 8;
+          indexOffset += 20;
+          sbbIndex.push(a);
         }
 
-        bif.current[currentVideo.id] = {
+        const obj = {
           arrayBuffer,
+          lastFrameKey: '',
           imagesCount,
-          interval,
-          bifIndex,
+          width,
+          height,
+          fps,
+          rows,
+          columns,
+          sbbIndex,
         };
-
-        // test
+        //console.log('sbb', obj);
+        sbb.current[currentVideo.id] = obj;
       };
 
       request.send(null);
     }
-  }, [bif, currentVideo, controller, getStoryboard,]);
+  }, [sbb, currentVideo, controller, updateStoryBoard,]);
 
   return (
     <>
-      <LinearProgress ref={progressRef} variant="determinate" className="videoPlayerProgress" value={progress} sx={{ height: '15px', cursor: 'pointer' }} onMousfDown={onMouseDown} onMouseUp={onMouseUp} onMouseMove={onMouseMove} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} />
+      <LinearProgress ref={progressRef} variant="determinate" className="videoPlayerProgress" value={progress} sx={{ height: '15px', cursor: 'pointer' }} onMouseDown={onMouseDown} onMouseUp={onMouseUp} onMouseMove={onMouseMove} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} />
       <span ref={tooltip} style={{ position: 'absolute', width: 'auto', padding: '4px 8px', textAlign: 'center', fontSize: '0.8rem', zIndex: '1', top: '-35px', borderRadius: '4px', backgroundColor: '#444', color: '#fff', display: 'none' }}>0:00</span>
-      <img ref={storyBoardImage} src="" alt="Story Board" style={{ position: 'absolute', width: '320px', height: '180px', zIndex: '1', top: '-226px', borderRadius: '8px', border: '2px solid white', display: 'none' }} />
+      <div ref={storyBoardSpriteMap} style={{ position: 'absolute', width: '320px', height: '180px', zIndex: '1', top: '-226px', borderRadius: '4px', border: '2px solid white', display: 'none', backgroundPositionX: 0, backgroundPositionY: 0 }} />
     </>
   );
 }
