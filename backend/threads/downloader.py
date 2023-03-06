@@ -53,7 +53,7 @@ class DownloaderThread:
 
             if (l > 0):
                 self._download()
-
+                
     # progress_hook for yt-dlp
     # see progress_hooks at https://github.com/yt-dlp/yt-dlp/blob/master/yt_dlp/YoutubeDL.py#L191
     def _dlp_progress_hook(self, d):
@@ -229,7 +229,10 @@ class DownloaderThread:
                 'format_sort': ['res:' + str(format['height'])], # force resolution
                 'mark_watched': True, # the mark watched func is overridden by the piworkoutpluginie plugin and the data is saved to the video model
                 'cookiefile': './db/cookies.txt',
-                'sponsorblock_remove': ['sponsor', 'preview'],
+                'postprocessors': [
+                    {'key': 'SponsorBlock'},
+                    {'key': 'ModifyChapters', 'remove_sponsor_segments': ['sponsor', 'preview']}
+                ], #'sponsorblock_remove': ['sponsor', 'preview'],
             }
 
             # download

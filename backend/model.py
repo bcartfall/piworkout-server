@@ -31,7 +31,7 @@ STATUS_COMPLETE = 5
 STATUS_DELETED = 6
 
 db = sqlite3.connect('./db/database.sqlite3', check_same_thread=False) 
-mutex = threading.Lock()
+mutex = threading.Lock() # DB mutex
 
 DEBUG = False # default False # set debug to true to delete the DB and redownload every video from the playlist
 
@@ -42,6 +42,13 @@ with mutex:
     db.execute('CREATE TABLE IF NOT EXISTS videos (id INTEGER PRIMARY KEY, `order` INT, videoId VARCHAR(255), source VARCHAR(255), url VARCHAR(255), filename VARCHAR(255), filesize INT, title VARCHAR(255), description TEXT, duration INT, position FLOAT, width INT, height INT, tbr INT, fps INT, vcodec VARCHAR(255), status INT, watchedUrl TEXT)')
     db.execute('CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY, name VARCHAR(255), value TEXT)')
     db.commit()
+    
+"""
+# test downloading a specific video again
+with mutex:
+    db.execute('DELETE FROM videos WHERE id = 9')
+    db.commit()
+"""
 
 # methods
 def close():
