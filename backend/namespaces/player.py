@@ -57,25 +57,28 @@ def receive(event, queue):
         
         if (event['action'] == 'progress' or event['action'] == 'seek'):
             MODEL.time = event['time']
-            if (time.time() - MODEL.lastWatched >= 5):
-                # at 5 seconds have passed
-                markWatched()
+            if (time.time() - MODEL.lastWatched >= 10):
+                # 10 seconds have passed
+                savePosition(event, updateDB=True, updateYT=True)
+            elif (event['action'] == 'seek'):
+                # just update position in memory
+                savePosition(event, updateDB=False, updateYT=False)
         elif (event['action'] == 'play'):
             MODEL.client = event['source']
             MODEL.status = STATUS_PLAYING
             MODEL.videoId = event['videoId']
             MODEL.time = event['time']
         elif (event['action'] == 'pause'):
-            savePosition(event)
+            savePosition(event, updateYT=True)
             MODEL.client = ''
             MODEL.status = STATUS_PAUSED
             MODEL.time = event['time']
         elif (event['action'] == 'ended'):
-            savePosition(event)
+            savePosition(event, updateYT=True)
             MODEL.client = ''
             MODEL.status = STATUS_ENDED
         elif (event['action'] == 'stop'):
-            savePosition(event)
+            savePosition(event, updateYT=True)
             MODEL.client = ''
             MODEL.status = STATUS_STOPPED
             MODEL.time = event['time']
@@ -86,16 +89,18 @@ def receive(event, queue):
             'player': data(),
         }, queue)
 
-def savePosition(event):
+def savePosition(event, updateDB = True, updateYT = True):
     if (event['source'] == MODEL.client and MODEL.video != None):
         # update position for video in database
         with model.video.dataMutex():
             MODEL.video.position = event['time']
             if (event['action'] == 'ended'):
                 MODEL.video.position = MODEL.video.duration
-            model.video.save(MODEL.video, False)
+            if (updateDB):
+                model.video.save(MODEL.video, False)
         # set watched position in youtube
-        markWatched()
+        if (updateYT):
+            markWatched()
         
 def markWatched():
     MODEL.lastWatched = time.time()
