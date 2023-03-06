@@ -95,6 +95,7 @@ export default function VideoPlayerProgress({ currentVideo, progress, onChangePr
 
     const mousePos = x / rect.width;
     const time = currentVideo.duration * mousePos;
+    //console.log('seekFromMouse', time);
     onChangeProgress(time);
   };
 
@@ -155,7 +156,6 @@ export default function VideoPlayerProgress({ currentVideo, progress, onChangePr
 
     // dermine position in spritemap based on fps and frame.duration
     const p = Math.floor(elapsed * obj.fps);
-    console.log(p, obj.columns);
     const y = Math.floor(p / obj.columns),
       x = p % obj.columns;
 

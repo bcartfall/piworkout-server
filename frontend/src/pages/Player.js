@@ -252,6 +252,12 @@ export default function Player({ controller, connected, }) {
 
   const playVideo = useCallback((video) => {
     console.log('playVideo', video);
+
+    // check if same video
+    if (currentVideo.id === video.id) {
+      return;
+    }
+
     updateVideoPosition(currentVideo);
 
     if (video.status === eStatus.COMPLETE) {
@@ -400,6 +406,8 @@ export default function Player({ controller, connected, }) {
   }, [togglePlay, videoClick, toggleFullscreen, handleStatus,]);
 
   const onMount = useCallback(() => {
+
+
     const video = videoRef.current;
     video.current = true;
     video.dataset.mounted = true;
@@ -474,6 +482,7 @@ export default function Player({ controller, connected, }) {
 
         video.play().catch(e => { });
       }
+      setPlaying(true);
 
       // 
       let bitrate;
@@ -519,9 +528,10 @@ export default function Player({ controller, connected, }) {
         handleStatus('mount');
       }
     }
-  }, [playerRef, videoRef, audioRef, controller, skip, onPlay, onEnded, onProgress, onPause, currentVideo, toggleFullscreen, updateVideoPosition, togglePlay, handleStatus,]);
+  }, [playerRef, videoRef, audioRef, controller, skip, onPlay, onEnded, onProgress, onPause, currentVideo, toggleFullscreen, updateVideoPosition, togglePlay, handleStatus, setPlaying, ]);
 
   const onChangeProgress = useCallback((time) => {
+    //console.log('onChangeProgress', time, videoRef);
     if (!videoRef.current) {
       return;
     }
