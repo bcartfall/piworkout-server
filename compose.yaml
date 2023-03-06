@@ -13,7 +13,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "1.0"
+          cpus: "0.5"
           memory: 128MB
   backend:
     build: ./backend/
@@ -31,5 +31,5 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "1.0"
-          memory: 256MB
+          cpus: "0.5"
+          memory: 128MB
