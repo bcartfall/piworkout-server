@@ -75,6 +75,10 @@ def receive(event, queue):
             'scopes': credentials.scopes
         }
         
+        if (credentials.refresh_token == None or credentials.refresh_token == ''):
+            print('Error: No refresh token received')
+            return
+        
         model.settings.put('youtubeApiToken', json.dumps(data))
         server.broadcast({
             'namespace': 'connect',

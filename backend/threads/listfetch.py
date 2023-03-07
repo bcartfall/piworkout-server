@@ -14,6 +14,8 @@ import urllib.error
 import urllib.parse
 import random
 import json
+from google.auth.exceptions import RefreshError
+from google.api_core.exceptions import RetryError, ServiceUnavailable, NotFound
 
 class ListFetchThread:
     _running = True
@@ -33,11 +35,18 @@ class ListFetchThread:
                 self._shouldFetch = False
                 start = time.time() # reset timer
 
-                model.video.fetch()
-                self._gcCounter += 1
-                if (self._gcCounter >= 60):
-                    self._gcCounter = 0
-                    self.garbageCollect()
+                try:
+                    model.video.fetch()
+                    self._gcCounter += 1
+                    if (self._gcCounter >= 60):
+                        self._gcCounter = 0
+                        self.garbageCollect()
+                except (RefreshError, ServiceUnavailable) as re:
+                    print('Error Refresh/Service: ' + str(re))
+                except RetryError as e:
+                    print('Error Retry: ' + str(re))
+                except Exception as e:
+                    print('Error exception: ' + str(e))
                     
             # determine if there is a video to mark watched in queue
             video = None

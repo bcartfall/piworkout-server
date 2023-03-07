@@ -35,7 +35,7 @@ export class Controller {
       }
     } else {
       this._localSettings = {
-        backendHost: window.location.host,
+        backendHost: 'localhost:5000',
       };
     }
     // load web socket
@@ -59,11 +59,15 @@ export class Controller {
   }
 
   getVideoUrl(path) {
+    return this.getUrl('videos/' + path.trimStart('/'));
+  }
+
+  getUrl(path) {
     if (!('backendHost' in this._localSettings)) {
       return '';
     }
     const schema = ('ssl' in this._localSettings && this._localSettings['ssl']) ? 'https://' : 'http://';
-    return schema + this._localSettings['backendHost'] + '/videos/' + path;
+    return schema + this._localSettings['backendHost'] + '/' + path.trimStart('/');
   }
 
   getLayoutTitle() {

@@ -356,6 +356,7 @@ class VideoModel:
     def fetch(self):
         """
         Fetch list from YouTube API.
+        Throws: RefreshError, ServiceUnavailable, RetryError, Exception
         """
         print('model.video.fetch()')
 
@@ -365,6 +366,8 @@ class VideoModel:
             print('no credentials created yet')
             return None
         data = json.loads(apiToken)
+        
+        print('credentials=' + str(data))
 
         credentials = google.oauth2.credentials.Credentials(
             data['token'],
