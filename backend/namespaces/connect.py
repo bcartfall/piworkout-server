@@ -4,6 +4,12 @@
  * See README.md
 """
 
+# namespace: connect
+# method: GET, PUT, or DELETE
+# redirectUri: URI to redirect back to
+# action (optional): authorizationUrl
+# state (optional)
+
 import model, server
 from threads import listfetch
 
@@ -27,7 +33,8 @@ def receive(event, queue):
         # match one of the authorized redirect URIs for the OAuth 2.0 client, which you
         # configured in the API Console. If this value doesn't match an authorized URI,
         # you will get a 'redirect_uri_mismatch' error.
-        flow.redirect_uri = 'http://' + os.getenv('APP_HOST') + ':' + os.getenv('APP_PORT') + '/'
+        flow.redirect_uri = event['redirectUri']
+        print('Creating ouath request for ' + event['redirectUri'])
 
         # Generate URL for request to Google's OAuth 2.0 server.
         # Use kwargs to set optional request parameters.
@@ -43,14 +50,17 @@ def receive(event, queue):
             'authorizationUrl': authorization_url
         })
     elif (event['method'] == 'PUT' and 'state' in event):
-        print('generating token')
+        print('generating token', event)
+        print('scopes=' + event['scope'])
+        print('state=' + event['state'])
+        
         flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
             '/app/auth/client_secret.json',
             scopes=[event['scope']],
             state=event['state'])
-        flow.redirect_uri = 'http://' + os.getenv('APP_HOST') + ':' + os.getenv('APP_PORT') + '/'
+        flow.redirect_uri = event['redirectUri']
 
-        authorization_response = event['url']
+        authorization_response = event['stateUrl']
         flow.fetch_token(authorization_response=authorization_response)
 
         # store the credentials

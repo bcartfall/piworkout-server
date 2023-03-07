@@ -32,7 +32,8 @@ export default function Main({ controller, videos, connected }) {
           'method': 'PUT',
           'state': searchParams.get('state'),
           'scope': searchParams.get('scope'),
-          'url': window.location.href,
+          'stateUrl': window.location.href,
+          'redirectUri': window.location.protocol + '//' + window.location.host + '/',
         };
         console.log('sending api state', data);
         controller.send(data);
@@ -47,6 +48,7 @@ export default function Main({ controller, videos, connected }) {
       'namespace': 'connect',
       'method': 'GET',
       'action': 'authorizationUrl',
+      'redirectUri': window.location.protocol + '//' + window.location.host + '/',
     });
   };
 

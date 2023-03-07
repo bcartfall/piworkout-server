@@ -23,7 +23,6 @@ piWorkout Server is the main server for piWorkout Desktop, piWorkout iOS, and pi
 
 The docker build will take care of all dependencies.
 
-- ffmpeg (patched build https://github.com/yt-dlp/FFmpeg-Builds)
 - Python 3.7 or greater
 - python libraries (see backend/requirements.txt)
     
@@ -35,7 +34,9 @@ Copy `.env-sample` to `.env` and configure.
 - APP_PORT: Main application port.
 - VIDEO_FOLDER: Folder where videos will be stored.
 
-Setup YouTube API client json file and copy to `backend/client_secret.json`.
+Setup YouTube API and URI redirects at https://console.cloud.google.com/getting-started. Download credential file to `backend/client_secret.json`.
+
+YouTube API requires redirect URIs to be a top level domain or localhost. Use a DNS service like https://freedns.afraid.org/ or your own domain to connect with YouTube.
 
 Run server docker containers:
 
