@@ -113,11 +113,13 @@ export default function VideoPlayerProgress({ currentVideo, progress, onChangePr
     if (!sbb.current) {
       spriteMap.style.backgroundImage = `url('data:image/jpeg;base64,${buffer}')`;
       spriteMap.style.backgroundPosition = '0px 0px';
+      return;
     }
 
     if (!sbb.current[currentVideo.id]) {
       spriteMap.style.backgroundImage = `url('data:image/jpeg;base64,${buffer}')`;
       spriteMap.style.backgroundPosition = '0px 0px';
+      return;
     }
     const obj = sbb.current[currentVideo.id];
 
