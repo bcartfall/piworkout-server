@@ -4,67 +4,27 @@
  * See README.md
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { Alert, Button } from '@mui/material';
 import PiVideo from '../components/PiVideo';
 import SettingsIcon from '@mui/icons-material/Settings';
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
-import YouTubeIcon from '@mui/icons-material/YouTube';
 
-export default function Main({ controller, videos, connected }) {
+export default function Main({ controller, videos, failedToConnect }) {
   const navigate = useNavigate();
 
   const [searchParams, ] = useSearchParams();
 
-  let sendingApi = useRef(false);
-
   useEffect(() => {
+    // check if we need to redirect to settings page
+    const localSettings = controller.getLocalSettings();
+    if (!localSettings.backendHost) {
+      navigate('/settings');
+    }
+
     // update title
     controller.setTitle('');
-
-    if (!sendingApi.current) {
-      // connect with YouTube API
-      sendingApi.current = true;
-      if (searchParams.get('state')) {
-        // update api with state
-        const data = {
-          'namespace': 'connect',
-          'method': 'PUT',
-          'state': searchParams.get('state'),
-          'scope': searchParams.get('scope'),
-          'stateUrl': window.location.href,
-          'redirectUri': window.location.protocol + '//' + window.location.host + '/',
-        };
-        console.log('sending api state', data);
-        controller.send(data);
-        navigate('/');
-      }
-    }
   }, [controller, navigate, searchParams]);
-
-  const onConnect = () => {
-    // send request to get redirect url
-    controller.send({
-      'namespace': 'connect',
-      'method': 'GET',
-      'action': 'authorizationUrl',
-      'redirectUri': window.location.protocol + '//' + window.location.host + '/',
-    });
-  };
-
-  let connectElement = '';
-  if (!connected) {
-    connectElement = (
-      <Alert severity="info" sx={{ mb: 2 }} action={
-        <Button variant="contained" size="small" onClick={onConnect}>
-          <YouTubeIcon fontSize="small" sx={{ mr: 0.5 }} />
-          Connect Now
-        </Button>
-      }>
-        You are not connected with the YouTube API.
-      </Alert>
-    );
-  }
 
   let videoElement;
   if (!videos.length) {
@@ -92,8 +52,22 @@ export default function Main({ controller, videos, connected }) {
 
   return (
     <div className="page">
-      {connectElement}
-      {videoElement}
+      {failedToConnect && 
+        <Alert severity="error" action={
+          <Link to="/settings" className="link">
+            <Button variant="outlined" size="small">
+              <SettingsIcon fontSize="small" sx={{ mr: 0.5 }} /> Settings
+            </Button>
+          </Link>
+        }>
+          Failed to connect to server.
+        </Alert>
+      }
+      {!failedToConnect &&
+        <>
+          {videoElement}
+        </>
+      }
     </div>
   );
 }

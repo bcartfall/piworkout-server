@@ -23,7 +23,7 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import defaultChannelImage from '../assets/images/youtube.svg';
 import eStatus from '../enums/VideoStatus';
 
-export default function Player({ controller, connected, }) {
+export default function Player({ controller, settings, }) {
   const navigate = useNavigate();
   const [currentVideo, setCurrentVideo] = useState(null);
   const [rating, setRating] = useState('');
@@ -566,10 +566,6 @@ export default function Player({ controller, connected, }) {
     }
   }, [controller,])
 
-  if (!connected) {
-    return <div>Loading...</div>;
-  }
-
   const getViews = () => {
     if (!currentVideo || !currentVideo.views) {
       return '-';
@@ -595,6 +591,10 @@ export default function Player({ controller, connected, }) {
   };
 
   const onRating = (rating) => {
+    if (settings.googleAPIKey !== '') {
+      // google API Key can't submit rating
+      return;
+    }
     if (currentVideo.rating === rating) {
       currentVideo.rating = 'none';
     } else {

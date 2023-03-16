@@ -26,6 +26,7 @@ export class Controller {
     this._setLoaded = setLoaded;
     this._currentVideo = null;
     this._client = null;
+    this._isElectron = isElectron;
 
     // load localSettings
     if (isElectron) {
@@ -40,6 +41,10 @@ export class Controller {
     }
     // load web socket
     this._client = new Client({ controller: this });
+  }
+
+  isElectron() {
+    return this._isElectron;
   }
 
   getLocalSettings(key = null, defaultValue = null) {
@@ -177,6 +182,12 @@ export class Controller {
       console.log('audio.play()', 'syncAudio');
       this._audio.play().catch(e => {
         console.error('Error playing audio', e);
+
+        // try again
+        setTimeout(() => {
+          this.syncAudio(action);
+        }, 1000);
+        return false;
       });
     } else if (action === 'pause') {
       this._audio.pause();

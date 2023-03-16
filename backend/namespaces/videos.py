@@ -47,25 +47,11 @@ def getPlayerInformation(event, queue):
             print(' Error: video not found.')
             return None
     
-    apiToken = model.settings.get('youtubeApiToken', '')
-    if (apiToken == ''):
+    youtube = model.video.getYouTube()
+    if (youtube == None):
         # no credentials created yet
         print('  Error: no credentials created yet')
         return None
-    data = json.loads(apiToken)
-
-    credentials = google.oauth2.credentials.Credentials(
-        data['token'],
-        refresh_token=data['refresh_token'],
-        token_uri=data['token_uri'],
-        client_id=data['client_id'],
-        client_secret=data['client_secret'])
-
-    api_service_name = "youtube"
-    api_version = "v3"
-
-    youtube = googleapiclient.discovery.build(
-        api_service_name, api_version, credentials=credentials)
 
     # get video information
     request = youtube.videos().list(
@@ -93,13 +79,20 @@ def getPlayerInformation(event, queue):
     channelImageUrl = item['snippet']['thumbnails']['default']['url']
 
     # get rating information
-    request = youtube.videos().getRating(
-        id=videoId
-    )
-    response = request.execute()
-    item = response['items'][0]
+    apiKey = model.settings.get('googleAPIKey', '')
+    
+    if (apiKey != ''):
+        # api key
+        rating = 'none'
+    else:
+        # oauth
+        request = youtube.videos().getRating(
+            id=videoId
+        )
+        response = request.execute()
+        item = response['items'][0]
 
-    rating = item['rating']
+        rating = item['rating'] # like / dislike / none
 
     # update
     with model.video.dataMutex():
@@ -115,6 +108,8 @@ def getPlayerInformation(event, queue):
         video.rating = rating
 
         model.video.save(video, False)
+        
+    #print('  done getting information')
 
     with model.video.dataMutex():
         server.send(queue, {
@@ -126,41 +121,33 @@ def getPlayerInformation(event, queue):
 def putRating(event, queue):
     rating = event['rating']
     print('Submitting rating ' + str(event['id']) + ', rating=' + rating)
+    
+    apiKey = model.settings.get('googleAPIKey', '')
     with model.video.dataMutex():
         video = model.video.byId(event['id'], False)
         if (video == None):
             print(' Error: video not found.')
             return None
         videoId = video.videoId
-        video.rating = rating
+        if (apiKey == ''):
+            video.rating = rating
         model.video.save(video, False)
     
-    apiToken = model.settings.get('youtubeApiToken', '')
-    if (apiToken == ''):
+    youtube = model.video.getYouTube()
+    if (youtube == None):
         # no credentials created yet
         print('  Error: no credentials created yet')
+        
         return None
-    data = json.loads(apiToken)
-
-    credentials = google.oauth2.credentials.Credentials(
-        data['token'],
-        refresh_token=data['refresh_token'],
-        token_uri=data['token_uri'],
-        client_id=data['client_id'],
-        client_secret=data['client_secret'])
-
-    api_service_name = "youtube"
-    api_version = "v3"
-
-    youtube = googleapiclient.discovery.build(
-        api_service_name, api_version, credentials=credentials)
-
-    # send rating
-    request = youtube.videos().rate(
-        id=videoId,
-        rating=rating
-    )
-    request.execute()
+    
+    if (apiKey == ''):
+        # api key can't set rating
+        # send rating (oauth)
+        request = youtube.videos().rate(
+            id=videoId,
+            rating=rating
+        )
+        request.execute()
 
 def broadcast():
     server.broadcast({

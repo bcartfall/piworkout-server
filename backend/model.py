@@ -64,6 +64,7 @@ class SettingsModel:
         'playlistUrl': 'https://',
         'youtubeCookie': '',
         'youtubeApiToken': '',
+        'googleAPIKey': '',
     }
     _dataMutex = threading.Lock()
 
@@ -352,6 +353,32 @@ class VideoModel:
         if (lock):
             self._dataMutex.release()
         return video
+    
+    def getYouTube(self):
+        """
+        Get youtube API object
+        """
+        api_service_name = "youtube"
+        api_version = "v3"
+        youtube = None
+
+        oauthToken = self._settings.get('youtubeApiToken', '')
+        apiKey = self._settings.get('googleAPIKey', '')
+        if (apiKey != ''):
+            youtube = googleapiclient.discovery.build(
+                api_service_name, api_version, developerKey=apiKey)
+        elif (oauthToken != ''):
+            # no credentials created yet
+            data = json.loads(oauthToken)
+            credentials = google.oauth2.credentials.Credentials(
+                data['token'],
+                refresh_token=data['refresh_token'],
+                token_uri=data['token_uri'],
+                client_id=data['client_id'],
+                client_secret=data['client_secret'])
+            youtube = googleapiclient.discovery.build(
+                api_service_name, api_version, credentials=credentials)
+        return youtube
 
     def fetch(self):
         """
@@ -360,27 +387,11 @@ class VideoModel:
         """
         print('model.video.fetch()')
 
-        apiToken = self._settings.get('youtubeApiToken', '')
-        if (apiToken == ''):
-            # no credentials created yet
-            print('no credentials created yet')
+        youtube = self.getYouTube()
+            
+        if (youtube == None):
+            print('  no credentials created yet')
             return None
-        data = json.loads(apiToken)
-        
-        print('credentials=' + str(data))
-
-        credentials = google.oauth2.credentials.Credentials(
-            data['token'],
-            refresh_token=data['refresh_token'],
-            token_uri=data['token_uri'],
-            client_id=data['client_id'],
-            client_secret=data['client_secret'])
-
-        api_service_name = "youtube"
-        api_version = "v3"
-
-        youtube = googleapiclient.discovery.build(
-            api_service_name, api_version, credentials=credentials)
 
         # get playlistId
         playerlistUrl = self._settings.get('playlistUrl', '')

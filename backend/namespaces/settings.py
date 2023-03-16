@@ -14,7 +14,8 @@ import http.cookiejar as cookielib
 from threads import listfetch
 import server
 
-KEYS = ['audioDelay', 'networkDelay', 'videoQuality', 'playlistUrl', 'youtubeCookie']
+# keys that can be saved from settings form
+KEYS = ['audioDelay', 'networkDelay', 'videoQuality', 'playlistUrl', 'youtubeCookie', 'googleAPIKey']
 
 def data():
     obj = {}
