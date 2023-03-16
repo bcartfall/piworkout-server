@@ -48,12 +48,15 @@ def receive(event, queue):
         MODEL.action = event['action']
         
         if (MODEL.video == None or MODEL.video.videoId != event['videoId']):
+            # mark last video position before changing video
+            if (MODEL.video != None):
+                savePosition(event, updateDB=True, updateYT=True)
+                
             # load video into memory
             MODEL.video = model.video.byId(event['videoId'], False)
             if (MODEL.video == None):
                 print('Error: Video not found.')
                 return
-            
         
         if (event['action'] == 'progress' or event['action'] == 'seek'):
             MODEL.time = event['time']
