@@ -66,6 +66,7 @@ class ListFetchThread:
         with model.video.dataMutex():
             data = json.loads(video.watchedUrl)
             position = video.position
+            video_length = video.duration
             
             print('markWatched() id=' + str(video.id))
             if (self.cj == None):
@@ -89,18 +90,19 @@ class ListFetchThread:
             qs.update({
                 'ver': ['2'],
                 'cpn': [cpn],
-                'cmt': position,
+                'cmt': position, # current position
                 'el': 'detailpage',  # otherwise defaults to "shorts"
             })
 
-            if is_full:
+            if is_full: 
+                # is_full=1 when videostatsWatchtimeUrl
                 # these seem to mark watchtime "history" in the real world
                 # they're required, so send in a single value
                 qs.update({
-                    'st': 0,
-                    'et': position,
+                    'st': 0, # start segment
+                    'et': position, # end segment
                 })
-            
+                
             url = urllib.parse.urlunparse(
                 parsed_url._replace(query=urllib.parse.urlencode(qs, True)))
             requests.get(url, cookies=self.cj)
