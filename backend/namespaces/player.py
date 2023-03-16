@@ -47,7 +47,7 @@ def receive(event, queue):
     if (event['action']):
         MODEL.action = event['action']
         
-        if (MODEL.video == None or MODEL.video.videoId != event['videoId']):
+        if (MODEL.video == None or MODEL.video.id != event['videoId']):
             # mark last video position before changing video
             if (MODEL.video != None):
                 savePosition(event, updateDB=True, updateYT=True)
@@ -93,7 +93,7 @@ def receive(event, queue):
         }, queue)
 
 def savePosition(event, updateDB = True, updateYT = True):
-    if (event['source'] == MODEL.client and MODEL.video != None):
+    if (MODEL.video != None):
         # update position for video in database
         with model.video.dataMutex():
             MODEL.video.position = event['time']
@@ -118,4 +118,8 @@ def markWatched():
     
     # add to listfetch thread queue
     with listfetch.THREAD.queueMutex:
+        # check if in queue
+        for video in listfetch.THREAD.markWatchedQueue:
+            if (video.id == MODEL.video.id):
+                return None # skip, already in queue
         listfetch.THREAD.markWatchedQueue.append(MODEL.video)

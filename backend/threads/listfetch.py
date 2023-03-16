@@ -62,15 +62,15 @@ class ListFetchThread:
         self._running = False
         
     def markWatched(self, video):
-        print('markWatched()')
-        if (self.cj == None):
-            print('cookiejar not set.')
-            return
-        
         # this is locked from run()
         with model.video.dataMutex():
             data = json.loads(video.watchedUrl)
             position = video.position
+            
+            print('markWatched() id=' + str(video.id))
+            if (self.cj == None):
+                print('cookiejar not set.')
+                return
 
         keys = ['videostatsPlaybackUrl', 'videostatsWatchtimeUrl']
         for key in keys:
