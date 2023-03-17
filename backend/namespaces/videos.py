@@ -98,6 +98,7 @@ def getPlayerInformation(event, queue):
         rating = item['rating'] # like / dislike / none
         
     # get sponsorblock information (cache for a few hours)
+    print('debug sponsorblock=', str(sponsorblock))
     if (sponsorblock == None or sponsorblock['expires_at'] < time.time()):
         # cache expired or sponsorblock not set
         sponsorblock = {
@@ -106,6 +107,7 @@ def getPlayerInformation(event, queue):
             'segments': []
         }
         url = f'https://sponsor.ajay.app/api/skipSegments?videoID={videoId}'
+        print(f'debug sponsorblock downloading from {url}')
         try:
             response = requests.get(url)
             status_code = response.status_code
