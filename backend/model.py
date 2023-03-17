@@ -179,6 +179,7 @@ class Video:
     views: int = 0,
     likes: int = 0,
     rating: str = 'none',
+    sponsorblock: dict = None,
 
     def toObject(self):
         if (self.progress):
@@ -212,6 +213,7 @@ class Video:
             'views': self.views,
             'likes': self.likes,
             'rating': self.rating,
+            'sponsorblock': self.sponsorblock,
         }
 
 class VideoModel:
@@ -256,12 +258,13 @@ class VideoModel:
                     vcodec=row[15],
                     status=int(row[16] or 0),
                     watchedUrl=str(row[17] or ''),
-                    channelName='', 
+                    channelName='', # no saved in db # see namespaces/videos::getPlayerInformation
                     channelImageUrl='', 
                     date='', 
                     likes=0, 
                     views=0, 
-                    rating='None'
+                    rating='None',
+                    sponsorblock=None,
                 )
                 self._items.append(video)
                 if (video.status == STATUS_INIT):

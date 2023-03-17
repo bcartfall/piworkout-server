@@ -8,6 +8,8 @@ import json
 import google.oauth2.credentials
 import googleapiclient.discovery
 import googleapiclient.errors
+import time
+import requests
 
 from threads import listfetch
 import model, server
@@ -46,6 +48,7 @@ def getPlayerInformation(event, queue):
         if (video == None):
             print(' Error: video not found.')
             return None
+        sponsorblock = video.sponsorblock
     
     youtube = model.video.getYouTube()
     if (youtube == None):
@@ -93,6 +96,24 @@ def getPlayerInformation(event, queue):
         item = response['items'][0]
 
         rating = item['rating'] # like / dislike / none
+        
+    # get sponsorblock information (cache for a few hours)
+    if (sponsorblock == None or sponsorblock['expires_at'] < time.time()):
+        # cache expired or sponsorblock not set
+        sponsorblock = {
+            'expires_at': time.time() + 10800, # 3 hours
+        }
+        url = f'https://sponsor.ajay.app/api/skipSegments?videoID={videoId}'
+        try:
+            response = requests.get(url)
+            # [{"category":"sponsor","actionType":"skip","segment":[18.069,78.36],"UUID":"...","videoDuration":4050.241,"locked":0,"votes":0,"description":""}]
+            sponsorblock['segments'] = response.json()
+        except requests.exceptions.RequestException as e:
+            sponsorblock = None
+            print(f'error getting sponsorblock information from api, url={url}, e={e}')
+        except:
+            sponsorblock = None
+            print(f'error getting sponsorblock information from api, url={url}, e=except')
 
     # update
     with model.video.dataMutex():
@@ -106,6 +127,7 @@ def getPlayerInformation(event, queue):
         video.channelImageUrl = channelImageUrl
 
         video.rating = rating
+        video.sponsorblock = sponsorblock
 
         model.video.save(video, False)
         
