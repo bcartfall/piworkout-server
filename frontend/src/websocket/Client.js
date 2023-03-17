@@ -10,8 +10,11 @@ export default class Client {
     this._ws = null;
     this._hasBackendFailure = false;
     this._initResolve = null;
+    this._connected = false;
+    this._retryCount = 0;
+    this._onFailedToConnect = null;
 
-    this.setup();
+    this.setup().then(() => {}).catch(() => {});
   }
 
   /**
@@ -52,11 +55,13 @@ export default class Client {
   }
 
   send(json) {
-    this._ws.send(JSON.stringify(json));
+    return this._ws.send(JSON.stringify(json));
   }
 
   onOpen(event) {
-
+    this._hasBackendFailure = false;
+    this._connected = true;
+    this._retryCount = 0;
   }
 
   onMessage(event) {
@@ -73,10 +78,19 @@ export default class Client {
 
   onClose(event) {
     console.log('WebSocket is closed. Reconnect will be attempted in 1 second.', event.reason);
-    setTimeout(() => {
-      // reconnect
-      this.setup();
-    }, 1000);
+    this._hasBackendFailure = true;
+    this._retryCount++;
+
+    if (!this._connected && this._retryCount >= 1) {
+      if (this._onFailedToConnect) {
+        this._onFailedToConnect();
+      }
+    } else {
+      setTimeout(() => {
+        // reconnect
+        this.setup();
+      }, 1000);
+    }
   }
 
   onError(err) {
@@ -149,5 +163,9 @@ export default class Client {
 
   getHasBackendFailure() {
     return this._hasBackendFailure;
+  }
+
+  onFailedToConnect(callback) {
+    this._onFailedToConnect = callback;
   }
 }

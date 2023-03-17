@@ -142,8 +142,8 @@ export class Controller {
     return [this._videos, this._setVideos];
   }
 
-  send(json) {
-    this._client.send(json);
+  async send(json) {
+    return this._client.send(json);
   }
 
   setPlayer({player, video, audio, onKeyDown }) {

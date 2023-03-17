@@ -245,20 +245,23 @@ export default React.memo(function Player({ controller, settings, }) {
     }
   }, [updateVideoPosition, currentVideo, controller, handleStatus, nextSkip, onChangeProgress, ]);
 
-  const onPause = useCallback((e) => {
+  const onPause = useCallback(async (e) => {
     controller.syncAudio('pause');
     const obj = {
       'namespace': 'player',
       'action': 'pause',
       'source': 'web',
-      'videoId': currentVideo.id,
+      'videoId': currentVideo ? currentVideo.id : 0,
       'time': controller.getCurrentTime(),
     };
     console.log(obj);
-    controller.send(obj);
-    updateVideoPosition(currentVideo);
+    const promise = controller.send(obj);
+    if (currentVideo) {
+      updateVideoPosition(currentVideo);
+    }
 
     handleStatus('pause');
+    return promise;
   }, [updateVideoPosition, currentVideo, controller, handleStatus]);
 
   const skip = useCallback((direction) => {
@@ -392,7 +395,17 @@ export default React.memo(function Player({ controller, settings, }) {
     if (currentVideo) {
       controller.setTitle(currentVideo.title);
     }
-  }, [currentVideo, shouldRequestInformation, controller, id, ]);
+    
+    // catch window closing
+    if (controller.isElectron()) {
+      window.electron.app.onBeforeClose(async (e) => {
+        console.log('Closing window. Pause video.');
+        if (playing && videoRef.current) {
+          videoRef.current.pause();
+        }
+      });
+    }
+  }, [currentVideo, shouldRequestInformation, controller, id, playing, onPause, ]);
 
   const toggleFullscreen = useCallback((event) => {
     if (event) {
@@ -618,7 +631,7 @@ export default React.memo(function Player({ controller, settings, }) {
     return () => {
       console.log('unmount');
     }
-  }, [controller,])
+  }, [controller,]);
 
   const getViews = () => {
     if (!currentVideo || !currentVideo.views) {
