@@ -72,41 +72,97 @@ class ListFetchThread:
             if (self.cj == None):
                 print('cookiejar not set.')
                 return
-
-        keys = ['videostatsPlaybackUrl', 'videostatsWatchtimeUrl']
-        for key in keys:
-            item = data[key]
-            is_full = item['is_full']
             
-            # taken from yt_dlp
-            parsed_url = urllib.parse.urlparse(item['url'])
-            qs = urllib.parse.parse_qs(parsed_url.query)
-
-            # cpn generation algorithm is reverse engineered from base.js.
+        # new way of marking watched smarttube-next
+        
+        # get url endpoints and query data. was taken from yt-dlp previously in piworkoutpluginie
+        item = data['videostatsPlaybackUrl']
+        parsed_url = urllib.parse.urlparse(item['url'])
+        qs = urllib.parse.parse_qs(parsed_url.query)
+        
+        # cpn generation algorithm is reverse engineered from base.js.
             # In fact it works even with dummy cpn.
-            CPN_ALPHABET = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_'
-            cpn = ''.join(CPN_ALPHABET[random.randint(0, 256) & 63] for _ in range(0, 16))
-
-            qs.update({
+        CPN_ALPHABET = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_'
+        cpn = ''.join(CPN_ALPHABET[random.randint(0, 256) & 63] for _ in range(0, 16))
+        
+        fullWatched = (position > video_length - 3)
+        
+        if (fullWatched):
+            # send fully watched
+            
+            # create watched record
+            nQs = {}
+            nQs.update({
+                'ns': 'yt',
                 'ver': ['2'],
-                'cpn': [cpn],
-                'cmt': position, # current position
-                'el': 'detailpage',  # otherwise defaults to "shorts"
+                'final': '1',
+                'docid': qs['docid'],
+                'cpn': cpn,
+                'ei': qs['ei'],
+                'vm': qs['vm'],
+                'of': qs['of'],
             })
-
-            if is_full: 
-                # is_full=1 when videostatsWatchtimeUrl
-                # these seem to mark watchtime "history" in the real world
-                # they're required, so send in a single value
-                qs.update({
-                    'st': 0, # start segment
-                    'et': position, # end segment
-                })
-                
-            url = urllib.parse.urlunparse(
-                parsed_url._replace(query=urllib.parse.urlencode(qs, True)))
+            
+            url = urllib.parse.urlunparse(parsed_url._replace(path='/api/stats/playback', query=urllib.parse.urlencode(nQs, True)))
+            #print(url)
             requests.get(url, cookies=self.cj)
-            #print(key, url)
+            
+            # update watched time
+            nQs = {}
+            nQs.update({
+                'ns': 'yt',
+                'ver': ['2'],
+                'final': '1',
+                'docid': qs['docid'],
+                'st': 0,
+                'et': video_length - 3,
+                'cpn': cpn,
+                'ei': qs['ei'],
+            })
+            url = urllib.parse.urlunparse(parsed_url._replace(path='/api/stats/watchtime', query=urllib.parse.urlencode(nQs, True)))
+            #print(url)
+            requests.get(url, cookies=self.cj)
+        else:
+            # send position
+            
+            # create watched record
+            nQs = {}
+            nQs.update({
+                'ns': 'yt',
+                'ver': ['2'],
+                'cmt': '0',
+                'final': '1',
+                'docid': qs['docid'],
+                'len': video_length,
+                'st': '0',
+                'et': position,
+                'cpn': cpn,
+                'ei': qs['ei'],
+                'vm': qs['vm'],
+                'of': qs['of'],
+            })
+            
+            url = urllib.parse.urlunparse(parsed_url._replace(path='/api/stats/playback', query=urllib.parse.urlencode(nQs, True)))
+            #print(url)
+            requests.get(url, cookies=self.cj)
+            
+            # update watched time
+            nQs = {}
+            nQs.update({
+                'ns': 'yt',
+                'ver': ['2'],
+                'cmt': '0',
+                'final': '1',
+                'docid': qs['docid'],
+                'len': video_length,
+                'st': 0,
+                'et': position,
+                'cpn': cpn,
+                'ei': qs['ei'],
+            })
+            url = urllib.parse.urlunparse(parsed_url._replace(path='/api/stats/watchtime', query=urllib.parse.urlencode(nQs, True)))
+            #print(url)
+            requests.get(url, cookies=self.cj)
 
     def garbageCollect(self):
         """
