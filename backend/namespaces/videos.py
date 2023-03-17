@@ -101,13 +101,23 @@ def getPlayerInformation(event, queue):
     if (sponsorblock == None or sponsorblock['expires_at'] < time.time()):
         # cache expired or sponsorblock not set
         sponsorblock = {
+            'status': 200,
             'expires_at': time.time() + 10800, # 3 hours
+            'segments': []
         }
         url = f'https://sponsor.ajay.app/api/skipSegments?videoID={videoId}'
         try:
             response = requests.get(url)
-            # [{"category":"sponsor","actionType":"skip","segment":[18.069,78.36],"UUID":"...","videoDuration":4050.241,"locked":0,"votes":0,"description":""}]
-            sponsorblock['segments'] = response.json()
+            status_code = response.status_code
+            sponsorblock['status'] = status_code
+            if (status_code != 200):
+                print(f'error getting sponsorblock information from api, status_code={status_code}')
+                if (status_code != 404):
+                    # try again next request if code is not 404
+                    sponsorblock = None
+            else:
+                # [{"category":"sponsor","actionType":"skip","segment":[18.069,78.36],"UUID":"...","videoDuration":4050.241,"locked":0,"votes":0,"description":""}]
+                sponsorblock['segments'] = response.json()
         except requests.exceptions.RequestException as e:
             sponsorblock = None
             print(f'error getting sponsorblock information from api, url={url}, e={e}')
