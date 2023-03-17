@@ -291,6 +291,7 @@ export default React.memo(function Player({ controller, settings, }) {
         audioRef.current = null;
         audioMounted.current = false;
         videoChanging.current = true;
+        nextSkip.current = null;
         navigate('/player/' + nVideo.id);
       }
     } else if (direction === 'previous') {
@@ -305,6 +306,7 @@ export default React.memo(function Player({ controller, settings, }) {
         audioRef.current = null;
         audioMounted.current = false;
         videoChanging.current = true;
+        nextSkip.current = null;
         navigate('/player/' + pVideo.id);
       }
     }
@@ -353,6 +355,7 @@ export default React.memo(function Player({ controller, settings, }) {
       audioRef.current = null;
       audioMounted.current = false;
       videoChanging.current = true;
+      nextSkip.current = null;
       navigate('/player/' + video.id);
     }
   }, [updateVideoPosition, currentVideo, controller, navigate,]);
