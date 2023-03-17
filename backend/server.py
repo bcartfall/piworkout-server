@@ -69,18 +69,24 @@ async def handler(websocket):
             },
         }
 
-        send(queue, obj)
+        try:
+            send(queue, obj)
+        except websockets.exceptions.ConnectionClosed:
+            print('  client disconnected early')
 
         # receive messages
-        async for message in websocket:
-            parsed = None
-            try:
-                parsed = json.loads(message)
-            except ValueError:
-                print('Decoding json message has failed.')
-                print(message)
-            if (parsed):
-                await receive(parsed, queue)
+        try:
+            async for message in websocket:
+                parsed = None
+                try:
+                    parsed = json.loads(message)
+                except ValueError:
+                    print('Decoding json message has failed.')
+                    print(message)
+                if (parsed):
+                    await receive(parsed, queue)
+        except websockets.exceptions.ConnectionClosed:
+            print('  client disconnected early')
     finally:
         CLIENTS.remove(queue)
         relay_task.cancel()
