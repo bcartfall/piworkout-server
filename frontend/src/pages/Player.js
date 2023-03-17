@@ -6,9 +6,10 @@
 
 import React, { useEffect, useCallback, useRef, useState } from 'react';
 import { useParams, useNavigate } from "react-router-dom";
-import { Grid, Box, Typography, Card, Divider, Fade, IconButton, Tooltip, Chip } from '@mui/material';
-import PiVideoPlayListItem from '../components/PiVideoPlayListItem';
+import { Grid, Box, Typography, Card, Divider, Fade, IconButton, Tooltip, Chip, Snackbar, Alert } from '@mui/material';
 import VideoPlayerProgress from '../components/VideoPlayerProgress';
+import VideoTime from '../components/VideoTime';
+import VideoList from '../components/VideoList';
 import ThumbUpOffAltIcon from '@mui/icons-material/ThumbUpOffAlt';
 import ThumbUpAltIcon from '@mui/icons-material/ThumbUpAlt';
 import ThumbDownOffAltIcon from '@mui/icons-material/ThumbDownOffAlt';
@@ -19,11 +20,11 @@ import SkipNextIcon from '@mui/icons-material/SkipNext';
 import SkipPreviousIcon from '@mui/icons-material/SkipPrevious';
 import FullscreenIcon from '@mui/icons-material/Fullscreen';
 import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import defaultChannelImage from '../assets/images/youtube.svg';
 import eStatus from '../enums/VideoStatus';
+import { SPONSORBLOCK_SKIP_CATEGORIES } from '../enums/SponsorBlock'
 
-export default function Player({ controller, settings, }) {
+export default React.memo(function Player({ controller, settings, }) {
   const navigate = useNavigate();
   const [currentVideo, setCurrentVideo] = useState(null);
   const [rating, setRating] = useState('');
@@ -35,58 +36,82 @@ export default function Player({ controller, settings, }) {
   const playerRef = useRef(null);
   const playerMounted = useRef(false);
   const videoChanging = useRef(false);
-  const statusRef = useRef(null);
-  const [videos,] = controller.videosUseState();
+  const videoTimeRef = useRef(null);
+  const videoListRef = useRef(null);
   const lastAction = useRef(new Date().getTime());
   const lastMouseAction = useRef(new Date().getTime());
   const videoClick = useRef({
     count: 0, singleTimeout: 0, doubleTimeout: 0,
   });
+  const nextSkip = useRef(null);
+  const progressRef = useRef(null);
 
   const [playing, setPlaying] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
   const isFullScreen = useRef(false);
   const [showPlaying, setShowPlaying] = useState(false);
   const [showPaused, setShowPaused] = useState(false);
-  const [progress, setProgress] = useState(0);
   const [showStatus, setShowStatus] = useState(true);
   const [showCursor, setShowCursor] = useState(true);
-  const [statusTime, setStatusTime] = useState('0:00 / 0:00');
   const [videoInfo, setVideoInfo] = useState('');
+  const [showSponsorSkipped, setShowSponsorSkipped] = useState(false);
 
   let { id } = useParams(); // get id from url (e.g. /player/:id)
   id = Math.trunc(id);
 
+  console.log('rendering Player', id);
+
+  const updateNextSkip = useCallback((source, currentTime) => {
+    let skipSegment = null;
+    if (currentVideo.sponsorblock) {
+      for (const segment of currentVideo.sponsorblock.segments) {
+        const categoryIndex = SPONSORBLOCK_SKIP_CATEGORIES.indexOf(segment.category);
+        if (categoryIndex < 0) {
+          continue;
+        }
+        if (currentTime < segment.segment[0]) {
+          skipSegment = segment;
+          break;
+        }
+      }
+    }
+    if (skipSegment) {
+      console.log('Setting next skip segment', skipSegment);
+      nextSkip.current = [skipSegment.segment[0], skipSegment];
+    }
+  }, [nextSkip, currentVideo,]);
+
   const updateVideoPosition = useCallback((video) => {
-    // 
+    const currentTime = controller.getCurrentTime();
     if (video.duration > 0) {
       // set progress
-      const currentTime = controller.getCurrentTime(),
-        duration = video.duration;
-      setProgress(currentTime / duration * 100);
-
-      // update status time
-      let a = '';
-      const aH = Math.floor(currentTime / 3600).toString(),
-        aM = Math.floor((currentTime / 60) % 60).toString(),
-        aS = Math.floor(currentTime % 60).toString();
-      if (aH > 0) {
-        a += aH.padStart(2, '0') + ':';
+      const duration = video.duration;
+      if (progressRef.current) {
+        progressRef.current.updateProgress(currentTime / duration * 100);
       }
-      a += aM.padStart(2, '0') + ':' + aS.padStart(2, '0');
 
-      let b = '';
-      const bH = Math.floor(duration / 3600).toString(),
-        bM = Math.floor((duration / 60) % 60).toString(),
-        bS = Math.floor(duration % 60).toString();
-      if (bH > 0) {
-        b += bH.padStart(2, '0') + ':';
-      }
-      b += bM.padStart(2, '0') + ':' + bS.padStart(2, '0');
+      // update video time
+      if (videoTimeRef.current) {
+        let a = '';
+        const aH = Math.floor(currentTime / 3600).toString(),
+          aM = Math.floor((currentTime / 60) % 60).toString(),
+          aS = Math.floor(currentTime % 60).toString();
+        if (aH > 0) {
+          a += aH.padStart(2, '0') + ':';
+        }
+        a += aM.padStart(2, '0') + ':' + aS.padStart(2, '0');
 
-      const newTime = a + ' / ' + b;
-      if (statusTime !== newTime) {
-        setStatusTime(newTime);
+        let b = '';
+        const bH = Math.floor(duration / 3600).toString(),
+          bM = Math.floor((duration / 60) % 60).toString(),
+          bS = Math.floor(duration % 60).toString();
+        if (bH > 0) {
+          b += bH.padStart(2, '0') + ':';
+        }
+        b += bM.padStart(2, '0') + ':' + bS.padStart(2, '0');
+
+        const newTime = a + ' / ' + b;
+        videoTimeRef.current.updateTime(newTime);
       }
     }
 
@@ -95,13 +120,18 @@ export default function Player({ controller, settings, }) {
     for (let i in videos) {
       const t = videos[i];
       if (t.id === video.id) {
-        videos[i].position = controller.getCurrentTime();
+        // we don't want this component to render so we don't use controller.setVideos(videos)
+        videos[i].position = currentTime;
         //console.log('setting position of video ' + t.id + ' to ' + t.position);
-        controller.setVideos([...videos]);
+
+        // update position in videolist
+        if (videoListRef.current) {
+          videoListRef.current.updateVideos(videos);
+        }
         break;
       }
     }
-  }, [controller, statusTime, setStatusTime,]);
+  }, [controller, videoTimeRef, progressRef, ]);
 
   const handleStatus = useCallback((action) => {
     const video = videoRef.current;
@@ -142,36 +172,78 @@ export default function Player({ controller, settings, }) {
   const onPlay = useCallback((e) => {
     controller.syncAudio('play');
 
+    const currentTime = controller.getCurrentTime();
     const obj = {
       'namespace': 'player',
       'action': 'play',
       'source': 'web',
       'videoId': currentVideo.id,
-      'time': controller.getCurrentTime(),
+      'time': currentTime,
     };
     console.log(obj);
     controller.send(obj);
 
     handleStatus('play');
-  }, [currentVideo, controller, handleStatus,]);
+    
+    // determine next segement to skip
+    updateNextSkip('play', currentTime);
+  }, [currentVideo, controller, handleStatus, updateNextSkip,]);
+
+  const onChangeProgress = useCallback((time) => {
+    //console.log('onChangeProgress', time, videoRef);
+    if (!videoRef.current) {
+      return;
+    }
+    videoRef.current.currentTime = time;
+    updateVideoPosition(currentVideo);
+    controller.syncAudio('seek');
+
+    const obj = {
+      'namespace': 'player',
+      'action': 'seek',
+      'source': 'web',
+      'videoId': currentVideo.id,
+      'time': time,
+    };
+    console.log(obj);
+    controller.send(obj);
+    updateNextSkip('seek', time);
+  }, [videoRef, controller, updateVideoPosition, currentVideo, updateNextSkip,]);
 
   const onProgress = useCallback((e) => {
     if (controller.getCurrentTime() <= 0 || controller.getVideo().paused || controller.getVideo().ended) {
       return;
     }
 
+    const currentTime = controller.getCurrentTime();
+
     const obj = {
       'namespace': 'player',
       'action': 'progress',
       'source': 'web',
       'videoId': currentVideo.id,
-      'time': controller.getCurrentTime(),
+      'time': currentTime,
     };
     //console.log(obj);
     controller.send(obj);
     updateVideoPosition(currentVideo);
     handleStatus('progress');
-  }, [updateVideoPosition, currentVideo, controller, handleStatus,]);
+
+    if (nextSkip.current) {
+      // check if we need to seek ahead of sponsor
+      if (currentTime >= nextSkip.current[0]) {
+        // skip segment
+        const skipTo = nextSkip.current[1].segment[1];
+        nextSkip.current = null;
+        onChangeProgress(skipTo);
+
+        setShowSponsorSkipped(true);
+        setTimeout(() => {
+          setShowSponsorSkipped(false);
+        }, 3000);
+      }
+    }
+  }, [updateVideoPosition, currentVideo, controller, handleStatus, nextSkip, onChangeProgress, ]);
 
   const onPause = useCallback((e) => {
     controller.syncAudio('pause');
@@ -190,6 +262,7 @@ export default function Player({ controller, settings, }) {
   }, [updateVideoPosition, currentVideo, controller, handleStatus]);
 
   const skip = useCallback((direction) => {
+    const videos = controller.getVideos();
     let index = -1, l = videos.length;
     for (let i = 0; i < l; i++) {
       if (currentVideo.id === videos[i].id) {
@@ -232,7 +305,7 @@ export default function Player({ controller, settings, }) {
         navigate('/player/' + pVideo.id);
       }
     }
-  }, [currentVideo, navigate, videos,]);
+  }, [currentVideo, navigate, controller, ]);
 
   const onEnded = useCallback((e) => {
     const obj = {
@@ -283,6 +356,7 @@ export default function Player({ controller, settings, }) {
 
   useEffect(() => {
     if (id) {
+      const videos = controller.getVideos();
       for (let video of videos) {
         if (video.id === id) {
           // determine resolution (browser based player will use best video possible)
@@ -318,7 +392,7 @@ export default function Player({ controller, settings, }) {
     if (currentVideo) {
       controller.setTitle(currentVideo.title);
     }
-  }, [currentVideo, shouldRequestInformation, controller, id, videos]);
+  }, [currentVideo, shouldRequestInformation, controller, id, ]);
 
   const toggleFullscreen = useCallback((event) => {
     if (event) {
@@ -406,8 +480,6 @@ export default function Player({ controller, settings, }) {
   }, [togglePlay, videoClick, toggleFullscreen, handleStatus,]);
 
   const onMount = useCallback(() => {
-
-
     const video = videoRef.current;
     video.current = true;
     video.dataset.mounted = true;
@@ -424,7 +496,8 @@ export default function Player({ controller, settings, }) {
       event.preventDefault();
       console.log('seek()', seconds);
 
-      video.currentTime += seconds;
+      const currentTime = video.currentTime + seconds;
+      video.currentTime = currentTime;
       updateVideoPosition(currentVideo);
       controller.syncAudio('seek');
 
@@ -433,12 +506,13 @@ export default function Player({ controller, settings, }) {
         'action': 'seek',
         'source': 'web',
         'videoId': currentVideo.id,
-        'time': controller.getCurrentTime(),
+        'time': currentTime,
       };
       console.log(obj);
       controller.send(obj);
 
       handleStatus('seek');
+      updateNextSkip('seek', currentTime);
     };
 
     const onKeyDown = (event) => {
@@ -528,27 +602,7 @@ export default function Player({ controller, settings, }) {
         handleStatus('mount');
       }
     }
-  }, [playerRef, videoRef, audioRef, controller, skip, onPlay, onEnded, onProgress, onPause, currentVideo, toggleFullscreen, updateVideoPosition, togglePlay, handleStatus, setPlaying, ]);
-
-  const onChangeProgress = useCallback((time) => {
-    //console.log('onChangeProgress', time, videoRef);
-    if (!videoRef.current) {
-      return;
-    }
-    videoRef.current.currentTime = time;
-    updateVideoPosition(currentVideo);
-    controller.syncAudio('seek');
-
-    const obj = {
-      'namespace': 'player',
-      'action': 'seek',
-      'source': 'web',
-      'videoId': currentVideo.id,
-      'time': controller.getCurrentTime(),
-    };
-    console.log(obj);
-    controller.send(obj);
-  }, [videoRef, controller, updateVideoPosition, currentVideo,]);
+  }, [playerRef, videoRef, audioRef, controller, skip, onPlay, onEnded, onProgress, onPause, currentVideo, toggleFullscreen, updateVideoPosition, togglePlay, handleStatus, setPlaying, updateNextSkip,]);
 
   useEffect(() => {
     // videoRef and audioRef has been loaded
@@ -618,7 +672,7 @@ export default function Player({ controller, settings, }) {
   }
 
   return (
-    <div className="page page-video">
+    <div key={'player-page'} className="page page-video">
       <Grid container spacing={2}>
         <Grid item sm={8}>
           <Box ref={playerRef} key="player" sx={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'scale-down', overflow: 'hidden', cursor: (showCursor ? 'default' : 'none') }} onClick={onClickPlayer} onMouseMove={() => { handleStatus('mousemove'); }}>
@@ -643,7 +697,7 @@ export default function Player({ controller, settings, }) {
               <audio key={'audio-' + currentVideo.id} ref={audioRef} autoPlay={false}>
                 <source src={controller.getVideoUrl(currentVideo.id + '-' + currentVideo.resolution + '-' + currentVideo.filename)} />
               </audio>
-              <Box ref={statusRef} onClick={(e) => { e.stopPropagation(); }} sx={{ position: 'absolute', display: 'flex', flexDirection: 'row', alignItems: 'center', width: '100%', pl: 0, pt: 0.5, pb: 0.5, height: '50px', bottom: (showStatus ? 0 : '-65px'), opacity: (showStatus ? 1 : 0), left: 0, textAlign: 'left', backgroundColor: 'rgba(0, 0, 0, 0.6)', transition: 'all 200ms ease-in-out' }}>
+              <Box onClick={(e) => { e.stopPropagation(); }} sx={{ position: 'absolute', display: 'flex', flexDirection: 'row', alignItems: 'center', width: '100%', pl: 0, pt: 0.5, pb: 0.5, height: '50px', bottom: (showStatus ? 0 : '-65px'), opacity: (showStatus ? 1 : 0), left: 0, textAlign: 'left', backgroundColor: 'rgba(0, 0, 0, 0.6)', transition: 'all 200ms ease-in-out' }}>
                 <Tooltip title="Previous (shift + p)" placement="top" disableInteractive>
                   <IconButton onClick={() => { skip('previous') }} sx={{ ml: 2 }}>
                     <SkipPreviousIcon fontSize="large" />
@@ -668,7 +722,7 @@ export default function Player({ controller, settings, }) {
                     <SkipNextIcon fontSize="large" />
                   </IconButton>
                 </Tooltip>
-                <Chip label={statusTime} avatar={<AccessTimeIcon />} />
+                <VideoTime ref={videoTimeRef} />
                 <Box sx={{ flex: 1 }} />
                 <Chip label={videoInfo} />
                 <Box>
@@ -680,9 +734,14 @@ export default function Player({ controller, settings, }) {
                   </Tooltip>
                 </Box>
                 <Box sx={{ position: 'absolute', left: 0, top: '-15px', width: '100%' }}>
-                  <VideoPlayerProgress controller={controller} currentVideo={currentVideo} progress={progress} onChangeProgress={onChangeProgress} />
+                  <VideoPlayerProgress ref={progressRef} key={'progress-' + currentVideo.id} controller={controller} currentVideo={currentVideo} onChangeProgress={onChangeProgress} />
                 </Box>
               </Box>
+              <Snackbar open={showSponsorSkipped} anchorOrigin={{ vertical: "bottom", horizontal: "right" }}>
+                <Alert severity="warning" sx={{ width: '100%' }}>
+                  Sponsor has been skipped.
+                </Alert>
+              </Snackbar>
             </Box>
           </Box>
           <Box>
@@ -716,14 +775,9 @@ export default function Player({ controller, settings, }) {
           </Card>
         </Grid>
         <Grid item sm={4}>
-          {videos.map((video, index) => {
-            if (video.title) {
-              return <PiVideoPlayListItem key={video.id} index={index} video={video} active={id === video.id} controller={controller} playVideo={playVideo} />;
-            }
-            return '';
-          })}
+          <VideoList key="videolist" ref={videoListRef} controller={controller} currentVideo={currentVideo} playVideo={playVideo} />
         </Grid>
       </Grid>
     </div>
   );
-}
+});

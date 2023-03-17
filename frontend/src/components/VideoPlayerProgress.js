@@ -7,15 +7,28 @@
 import jDataView from 'jdataview';
 import { Buffer } from 'buffer';
 
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback, useState, useImperativeHandle, } from 'react';
 import { LinearProgress } from '@mui/material';
+import SponsorBlockSegments from './SponsorBlockSegments';
 
-export default function VideoPlayerProgress({ currentVideo, progress, onChangeProgress, controller }) {
+const BAR_HEIGHT = 15;
+
+export default React.forwardRef(function VideoPlayerProgress({ currentVideo, onChangeProgress, controller }, ref) {
+  const [progress, setProgress] = useState(0);
+
   const progressRef = useRef(null);
   const sbb = useRef(null);
   const storyBoardSpriteMap = useRef(null);
   const mouseState = useRef('up');
   const tooltip = useRef(null);
+
+  useImperativeHandle(ref, () => {
+    return {
+      updateProgress: (nProgress) => {
+        setProgress(nProgress);
+      },
+    };
+  }, [setProgress,]);
 
   const onMouseMove = (event) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -139,8 +152,6 @@ export default function VideoPlayerProgress({ currentVideo, progress, onChangePr
       }
     }
 
-    // todo determine the x, y of the spriteMap
-
     const frameKey = `${frameIndex}`;
     //console.log('found frame', frameKey, obj.lastFrameKey)
     if (!frame) {
@@ -167,6 +178,7 @@ export default function VideoPlayerProgress({ currentVideo, progress, onChangePr
   }, [sbb, currentVideo,]);
 
   useEffect(() => {
+    // get story board binary
     if (!sbb.current) {
       sbb.current = {};
     }
@@ -239,10 +251,12 @@ export default function VideoPlayerProgress({ currentVideo, progress, onChangePr
   }, [sbb, currentVideo, controller, updateStoryBoard,]);
 
   return (
-    <>
-      <LinearProgress ref={progressRef} variant="determinate" className="videoPlayerProgress" value={progress} sx={{ height: '15px', cursor: 'pointer' }} onMouseDown={onMouseDown} onMouseUp={onMouseUp} onMouseMove={onMouseMove} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} />
-      <span ref={tooltip} style={{ position: 'absolute', width: 'auto', padding: '4px 8px', textAlign: 'center', fontSize: '0.8rem', zIndex: '1', top: '-35px', borderRadius: '4px', backgroundColor: '#444', color: '#fff', display: 'none' }}>0:00</span>
-      <div ref={storyBoardSpriteMap} style={{ position: 'absolute', width: '320px', height: '180px', zIndex: '1', top: '-226px', borderRadius: '4px', border: '2px solid white', display: 'none', backgroundPositionX: 0, backgroundPositionY: 0 }} />
-    </>
+    <div style={{ position: 'relative', }}>
+      <LinearProgress key={'linerprogress-' + currentVideo.id} ref={progressRef} variant="determinate" className="videoPlayerProgress" value={progress} sx={{ height: BAR_HEIGHT + 'px', cursor: 'pointer' }} onMouseDown={onMouseDown} onMouseUp={onMouseUp} onMouseMove={onMouseMove} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} />
+      <SponsorBlockSegments key={'segments-' + currentVideo.id} currentVideo={currentVideo} height={BAR_HEIGHT + 'px'} />
+
+      <span key={'tooltip-' + currentVideo.id} ref={tooltip} style={{ position: 'absolute', width: 'auto', padding: '4px 8px', textAlign: 'center', fontSize: '0.8rem', zIndex: '1', top: '-35px', borderRadius: '4px', backgroundColor: '#444', color: '#fff', display: 'none' }}>0:00</span>
+      <div key={'sb-' + currentVideo.id} ref={storyBoardSpriteMap} style={{ position: 'absolute', width: '320px', height: '180px', zIndex: '1', top: '-226px', borderRadius: '4px', border: '2px solid white', display: 'none', backgroundPositionX: 0, backgroundPositionY: 0 }} />
+    </div>
   );
-}
+});
