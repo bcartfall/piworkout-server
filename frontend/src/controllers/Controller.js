@@ -36,7 +36,7 @@ export class Controller {
       }
     } else {
       this._localSettings = {
-        backendHost: 'localhost:5000',
+        backendHost: window.location.host,
       };
     }
     // load web socket
