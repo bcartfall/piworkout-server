@@ -99,7 +99,7 @@ def getPlayerInformation(event, queue):
         
     # get sponsorblock information (cache for a few hours)
     print('debug sponsorblock=', str(sponsorblock))
-    if (sponsorblock == None or sponsorblock['expires_at'] < time.time()):
+    if (sponsorblock == None or (sponsorblock and sponsorblock['expires_at'] < time.time())):
         # cache expired or sponsorblock not set
         sponsorblock = {
             'status': 200,
