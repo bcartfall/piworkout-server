@@ -179,7 +179,7 @@ class Video:
     views: int = 0,
     likes: int = 0,
     rating: str = 'none',
-    sponsorblock: dict = None,
+    sponsorblock: dict | None = None,
 
     def toObject(self):
         if (self.progress):
@@ -467,7 +467,8 @@ class VideoModel:
                     fps=info.get('fps'),
                     vcodec=info.get('vcodec'),
                     status=STATUS_INIT,
-                    progress=None
+                    progress=None,
+                    sponsorblock=None,
                 )
 
                 thumbnailUrl = info.get('thumbnail')
