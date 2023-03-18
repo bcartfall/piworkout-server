@@ -9,6 +9,9 @@ import time
 import model, server
 from threads import listfetch
 
+import logging
+logger = logging.getLogger('piworkout-server')
+
 STATUS_STOPPED = 1
 STATUS_PAUSED = 2
 STATUS_PLAYING = 3
@@ -43,7 +46,7 @@ def data():
     return MODEL.toObject()    
 
 def receive(event, queue):
-    print('player', event)
+    logger.debug('player', event)
     if (event['action']):
         MODEL.action = event['action']
         
@@ -55,7 +58,7 @@ def receive(event, queue):
             # load video into memory
             MODEL.video = model.video.byId(event['videoId'], False)
             if (MODEL.video == None):
-                print('Error: Video not found.')
+                logger.warning('Error: Video not found.')
                 return
         
         if (event['action'] == 'progress' or event['action'] == 'seek'):

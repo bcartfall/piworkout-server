@@ -385,10 +385,23 @@ export default React.memo(function Player({ controller, settings, }) {
           if (shouldRequestInformation.current) {
             shouldRequestInformation.current = false;
             console.log('requesting more information.', video.id);
+            const uuid = controller.generateUuid();
             controller.send({
               'namespace': 'videos',
               'action': 'playerInformation',
               'id': video.id,
+              'uuid': uuid,
+            });
+
+            // wait for response
+            controller.getClient().onMessageCall((event, json) => {
+              if (json.uuid === uuid) {
+                // set current video will rerender and show updated information
+                setCurrentVideo(json.video);
+
+                // clear callback
+                controller.getClient().onMessageCall(null);
+              }
             });
           }
           break;

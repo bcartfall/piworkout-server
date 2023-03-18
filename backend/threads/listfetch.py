@@ -17,6 +17,9 @@ import json
 from google.auth.exceptions import RefreshError
 from google.api_core.exceptions import RetryError, ServiceUnavailable, NotFound
 
+import logging
+logger = logging.getLogger('piworkout-server')
+
 class ListFetchThread:
     _running = True
     _shouldFetch = True
@@ -42,11 +45,11 @@ class ListFetchThread:
                         self._gcCounter = 0
                         self.garbageCollect()
                 except (RefreshError, ServiceUnavailable) as re:
-                    print('Error Refresh/Service: ' + str(re))
+                    logger.error('Error Refresh/Service: ' + str(re))
                 except RetryError as e:
-                    print('Error Retry: ' + str(re))
+                    logger.error('Error Retry: ' + str(re))
                 except Exception as e:
-                    print('Error exception: ' + str(e))
+                    logger.error('Error exception: ' + str(e))
                     
             # determine if there is a video to mark watched in queue
             video = None
@@ -68,9 +71,9 @@ class ListFetchThread:
             position = video.position
             video_length = video.duration
             
-            print('markWatched() id=' + str(video.id))
+            logger.info('markWatched() id=' + str(video.id))
             if (self.cj == None):
-                print('cookiejar not set.')
+                logger.warning('cookiejar not set.')
                 return
             
         # new way of marking watched smarttube-next
@@ -87,7 +90,13 @@ class ListFetchThread:
         
         fullWatched = (position > video_length - 3)
         
+        # fullWatched doesn't appear to be working so just set the watchtime to video_length - 3s
         if (fullWatched):
+            fullWatched = False
+            position = video_length - 3
+        
+        if (fullWatched):
+            # @deprecated
             # send fully watched
             
             # create watched record
@@ -104,7 +113,7 @@ class ListFetchThread:
             })
             
             url = urllib.parse.urlunparse(parsed_url._replace(path='/api/stats/playback', query=urllib.parse.urlencode(nQs, True)))
-            #print(url)
+            logger.debug(url)
             requests.get(url, cookies=self.cj)
             
             # update watched time
@@ -120,7 +129,7 @@ class ListFetchThread:
                 'ei': qs['ei'],
             })
             url = urllib.parse.urlunparse(parsed_url._replace(path='/api/stats/watchtime', query=urllib.parse.urlencode(nQs, True)))
-            #print(url)
+            logger.debug(url)
             requests.get(url, cookies=self.cj)
         else:
             # send position
@@ -143,7 +152,7 @@ class ListFetchThread:
             })
             
             url = urllib.parse.urlunparse(parsed_url._replace(path='/api/stats/playback', query=urllib.parse.urlencode(nQs, True)))
-            #print(url)
+            logger.debug(url)
             requests.get(url, cookies=self.cj)
             
             # update watched time
@@ -161,14 +170,14 @@ class ListFetchThread:
                 'ei': qs['ei'],
             })
             url = urllib.parse.urlunparse(parsed_url._replace(path='/api/stats/watchtime', query=urllib.parse.urlencode(nQs, True)))
-            #print(url)
+            logger.debug(url)
             requests.get(url, cookies=self.cj)
 
     def garbageCollect(self):
         """
         Run garbage collection method
         """
-        print('listfetch.garbageCollect()')
+        logger.info('listfetch.garbageCollect()')
         dir = '/videos/'
         now = time.time()
 
@@ -196,23 +205,23 @@ class ListFetchThread:
             # check if old enough to delete
             days = (now - os.path.getmtime(dir + path)) / 86400
             if (days >= 7):
-                print(f'Removing file {path}, days={days}')
+                logger.info(f'Removing file {path}, days={days}')
                 os.remove(dir + path)
 
 THREAD = ListFetchThread()
 
 def fetchOnNextCycle():
-    print('Setting _shouldFetch=True')
+    logger.debug('Setting _shouldFetch=True')
     THREAD._shouldFetch = True
 
 def _runThread():
     THREAD.run()
 
 def run():
-    print('listfetch run()')
+    logger.debug('listfetch run()')
     t = threading.Thread(target=_runThread)
     t.start()
 
 def close():
-    print('listfetch close()')
+    logger.debug('listfetch close()')
     THREAD.close()

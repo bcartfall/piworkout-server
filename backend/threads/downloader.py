@@ -6,18 +6,16 @@
 
 import threading
 import time
-import requests
 import threading
 import time
 import yt_dlp
-import re
-import random
-import json
 import os
 
 import model, server
-from namespaces import videos
 from threads import sbgenerator
+
+import logging
+logger = logging.getLogger('piworkout-server')
 
 class DownloaderThread:
     _running = True
@@ -68,16 +66,16 @@ class DownloaderThread:
             if (elapsed >= 0.1 and self._step < 1):
                 shouldBroadcast = True
                 
-            #print('----' + d['status'])
+            #logger.debug('----' + d['status'])
             if d['status'] == 'finished':
                 shouldBroadcast = True
                 self._totalBytesEstimate = 0
                 self._step += 1
                 if (self._step == 2):
-                    print('---------- finished audio')
+                    logger.debug('---------- finished audio')
                     self._currentVideo.status = model.STATUS_ENCODING
                 else:
-                    print('---------- finished video')
+                    logger.debug('---------- finished video')
                     self._currentVideo.status = model.STATUS_DOWNLOADING_AUDIO
             elif d['status'] == 'downloading':
                 totalBytes = d.get("total_bytes")
@@ -86,7 +84,7 @@ class DownloaderThread:
                     if (est > self._totalBytesEstimate):
                         self._totalBytesEstimate = est
                     totalBytes = self._totalBytesEstimate
-                print('---------- progress_hook called threadId=' + str(threading.get_native_id()) + ', ' + str(d.get('downloaded_bytes')) + '/' + str(totalBytes) + ', status=' + d['status'] + 
+                logger.debug('---------- progress_hook called threadId=' + str(threading.get_native_id()) + ', ' + str(d.get('downloaded_bytes')) + '/' + str(totalBytes) + ', status=' + d['status'] + 
                     ', filename=' + d['filename'] + ', weight=' + str(weight) + ', previousWeight=' + str(previousWeight) + ', speed=' + str(d.get('speed')))
                 
                 # determine progress
@@ -96,12 +94,12 @@ class DownloaderThread:
                 self._currentVideo.progress.totalBytes = totalBytes
                 if (totalBytes > 0):
                     progress = previousWeight + (d.get('downloaded_bytes') / totalBytes * weight)
-                    print('-- progress=' + str(progress))
+                    logger.debug('-- progress=' + str(progress))
                     self._currentVideo.progress.progress = progress
                 self._currentVideo.progress.eta = d.get('eta')
                 self._currentVideo.progress.speed = d.get('speed')
                 self._currentVideo.progress.elapsed = d.get('elapsed')
-                #print(self._currentVideo.progress)
+                #logger.debug(self._currentVideo.progress)
 
             # send update
             if (shouldBroadcast):
@@ -123,7 +121,7 @@ class DownloaderThread:
             self._currentVideo.progress = model.VideoProgress()
             self._previousWeight = 0
             url = self._currentVideo.url
-            print('downloading next item from queue', self._currentVideo.videoId)
+            logger.info('downloading next item from queue', self._currentVideo.videoId)
             id = self._currentVideo.id
             filename = self._currentVideo.filename
             
@@ -155,7 +153,7 @@ class DownloaderThread:
                 pass
 
             def error(self, msg):
-                print(msg)
+                logger.error(msg)
                 pass
 
         # prepare download options
@@ -212,7 +210,7 @@ class DownloaderThread:
                     },
                 ]
                 
-        #print('/videos/' + str(self._currentVideo.id) + '-' + self._currentVideo.filename)
+        #logger.debug('/videos/' + str(self._currentVideo.id) + '-' + self._currentVideo.filename)
 
         for format in self._formats:
             self._lastUpdate = 0
@@ -237,11 +235,11 @@ class DownloaderThread:
 
             # download
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                print('------------------------------- starting download')
+                logger.info('------------------------------- starting download')
                 ydl.download(url)
                 # post processing has finished and thread is about to close
                 # mark video as completed
-                print('------------------------------- completed')
+                logger.info('------------------------------- completed')
                 
             # set time of file to now
             now = time.time()
@@ -307,10 +305,10 @@ def _runThread():
     THREAD.run()
 
 def run():
-    print('downloader run()')
+    logger.debug('downloader run()')
     t = threading.Thread(target=_runThread)
     t.start()
 
 def close():
-    print('downloader close()')
+    logger.debug('downloader close()')
     THREAD.close()

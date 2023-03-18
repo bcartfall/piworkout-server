@@ -13,6 +13,7 @@ export default class Client {
     this._connected = false;
     this._retryCount = 0;
     this._onFailedToConnect = null;
+    this._onMessageCallback = null;
 
     this.setup().then(() => {}).catch(() => {});
   }
@@ -74,6 +75,14 @@ export default class Client {
       case 'videos': this.onVideos(event, json); break;
       default:
     }
+    if (this._onMessageCallback) {
+      this._onMessageCallback(event, json);
+    }
+  }
+
+  onMessageCall(callback) {
+    // set the custom callback for components to register their own message callback
+    this._onMessageCallback = callback;
   }
 
   onClose(event) {
@@ -115,6 +124,7 @@ export default class Client {
     setInterval(() => {
       this.send({
         'namespace': 'up',
+        'uuid': this._controller.generateUuid(),
       });
     }, 1000 / 10);
   }

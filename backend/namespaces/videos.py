@@ -14,8 +14,11 @@ import requests
 from threads import listfetch
 import model, server
 
+import logging
+logger = logging.getLogger('piworkout-server')
+
 def receive(event, queue):
-    print('videos', event)
+    logger.info('videos', event)
     if (event['action']):
         if (event['action'] == 'refresh'):
             # Update all clients with full video list
@@ -23,7 +26,7 @@ def receive(event, queue):
             listfetch.fetchOnNextCycle()
         elif (event['action'] == 'order'):
             # Change order of videos
-            print('TODO Change Order') 
+            logger.debug('TODO Change Order') 
         elif (event['action'] == 'playerInformation'):
             # Get more information about video from youtube and update model
             getPlayerInformation(event, queue)
@@ -33,27 +36,27 @@ def receive(event, queue):
 
 def data():
     res = []
-    print('videos.data()')
+    logger.info('videos.data()')
     with model.video.dataMutex():
         for item in model.video.data(False, False):
-            #print('  id=' + str(item.id) + ', videoId=' + item.videoId)
+            #logger.debug('  id=' + str(item.id) + ', videoId=' + item.videoId)
             res.append(item.toObject())
     return res
 
 def getPlayerInformation(event, queue):
-    print('Getting more information about video ' + str(event['id']))
+    logger.info('Getting more information about video ' + str(event['id']))
     with model.video.dataMutex():
         video = model.video.byId(event['id'], False)
         videoId = video.videoId
         if (video == None):
-            print(' Error: video not found.')
+            logger.warning(' Error: video not found.')
             return None
         sponsorblock = video.sponsorblock
     
     youtube = model.video.getYouTube()
     if (youtube == None):
         # no credentials created yet
-        print('  Error: no credentials created yet')
+        logger.warning('  Error: no credentials created yet')
         return None
 
     # get video information
@@ -98,7 +101,7 @@ def getPlayerInformation(event, queue):
         rating = item['rating'] # like / dislike / none
         
     # get sponsorblock information (cache for a few hours)
-    print('debug sponsorblock=', str(sponsorblock))
+    logger.debug('sponsorblock=', str(sponsorblock))
     if (sponsorblock == None or (sponsorblock and sponsorblock['expires_at'] < time.time())):
         # cache expired or sponsorblock not set
         sponsorblock = {
@@ -107,13 +110,13 @@ def getPlayerInformation(event, queue):
             'segments': []
         }
         url = f'https://sponsor.ajay.app/api/skipSegments?videoID={videoId}'
-        print(f'debug sponsorblock downloading from {url}')
+        logger.debug(f'sponsorblock downloading from {url}')
         try:
             response = requests.get(url)
             status_code = response.status_code
             sponsorblock['status'] = status_code
             if (status_code != 200):
-                print(f'error getting sponsorblock information from api, status_code={status_code}')
+                logger.error(f'error getting sponsorblock information from api, status_code={status_code}')
                 if (status_code != 404):
                     # try again next request if code is not 404
                     sponsorblock = None
@@ -122,10 +125,10 @@ def getPlayerInformation(event, queue):
                 sponsorblock['segments'] = response.json()
         except requests.exceptions.RequestException as e:
             sponsorblock = None
-            print(f'error getting sponsorblock information from api, url={url}, e={e}')
+            logger.error(f'error getting sponsorblock information from api, url={url}, e={e}')
         except:
             sponsorblock = None
-            print(f'error getting sponsorblock information from api, url={url}, e=except')
+            logger.error(f'error getting sponsorblock information from api, url={url}, e=except')
 
     # update
     with model.video.dataMutex():
@@ -143,24 +146,25 @@ def getPlayerInformation(event, queue):
 
         model.video.save(video, False)
         
-    #print('  done getting information')
+    #logger.debug('  done getting information')
 
     with model.video.dataMutex():
         server.send(queue, {
             'namespace': 'videos',
             'video': video.toObject(),
             'source': 'playerInformation',
+            'uuid': event['uuid'],
         })
 
 def putRating(event, queue):
     rating = event['rating']
-    print('Submitting rating ' + str(event['id']) + ', rating=' + rating)
+    logger.info('Submitting rating ' + str(event['id']) + ', rating=' + rating)
     
     apiKey = model.settings.get('googleAPIKey', '')
     with model.video.dataMutex():
         video = model.video.byId(event['id'], False)
         if (video == None):
-            print(' Error: video not found.')
+            logger.error(' Error: video not found.')
             return None
         videoId = video.videoId
         if (apiKey == ''):
@@ -170,7 +174,7 @@ def putRating(event, queue):
     youtube = model.video.getYouTube()
     if (youtube == None):
         # no credentials created yet
-        print('  Error: no credentials created yet')
+        logger.warning('  Warning: no credentials created yet')
         
         return None
     

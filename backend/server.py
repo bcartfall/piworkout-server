@@ -14,6 +14,9 @@ import model
 
 from namespaces import settings, connect, videos, player, ping
 
+import logging
+logger = logging.getLogger('piworkout-server')
+
 CLIENTS = set()
 MUTEX = threading.Lock()
 MESSAGE_ID = 0
@@ -23,9 +26,9 @@ async def receive(event, queue):
     Handle message from client
     """
     if (not 'namespace' in event):
-        print('namespace not found in message')
+        logger.debug('namespace not found in message')
         return
-    #print(event)
+    #logger.debug(event)
 
     # handle message
     namespace = event['namespace']
@@ -43,7 +46,7 @@ async def receive(event, queue):
         case 'ping':
             ping.receive(event, queue)
         case _:
-            print(f'  namespace {namespace} not handled.')
+            logger.warning(f'  namespace {namespace} not handled.')
 
 async def relay(queue, websocket):
     while True:
@@ -56,7 +59,7 @@ async def handler(websocket):
     queue = asyncio.Queue()
     relay_task = asyncio.create_task(relay(queue, websocket))
     CLIENTS.add(queue)
-    print('  client connected count=' + str(len(CLIENTS)))
+    logger.info('  client connected count=' + str(len(CLIENTS)))
     try:
         # send initial message
         obj = {
@@ -72,7 +75,7 @@ async def handler(websocket):
         try:
             send(queue, obj)
         except websockets.exceptions.ConnectionClosed:
-            print('  client disconnected early')
+            logger.debug('  client disconnected early')
 
         # receive messages
         try:
@@ -81,16 +84,16 @@ async def handler(websocket):
                 try:
                     parsed = json.loads(message)
                 except ValueError:
-                    print('Decoding json message has failed.')
-                    print(message)
+                    logger.debug('Decoding json message has failed.')
+                    logger.debug(message)
                 if (parsed):
                     await receive(parsed, queue)
         except websockets.exceptions.ConnectionClosed:
-            print('  client disconnected early')
+            logger.debug('  client disconnected early')
     finally:
         CLIENTS.remove(queue)
         relay_task.cancel()
-        print('  client disconnected count=' + str(len(CLIENTS)))
+        logger.info('  client disconnected count=' + str(len(CLIENTS)))
 
 def send(queue, obj):
     global MESSAGE_ID

@@ -10,3 +10,4 @@ backend/db/database.sqlite3
 videos/*
 !videos/README.md
 backend/yt_dlp_video.json
+backend/log/*.log

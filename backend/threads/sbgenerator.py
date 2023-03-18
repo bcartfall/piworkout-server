@@ -16,6 +16,9 @@ import shutil
 
 import model
 
+import logging
+logger = logging.getLogger('piworkout-server')
+
 INTERVAL=5000 # time between storyboard images in ms - used for deprecated bif generator
 
 class SBGeneratorThread:
@@ -46,10 +49,10 @@ class SBGeneratorThread:
         # check if sb file already exists
         sbbPath = '/videos/' + str(id) + '-' + filename + '.sbb'
         if (os.path.exists(sbbPath)):
-            print('video ' + str(id) + ' already has sb file.')
+            logger.debug('video ' + str(id) + ' already has sb file.')
             return
             
-        print('generating sb for id=' + str(id) + ', filename=' + filename)
+        logger.info('generating sb for id=' + str(id) + ', filename=' + filename)
         
         tmpFolder = '/tmp/sb/'
         
@@ -61,9 +64,9 @@ class SBGeneratorThread:
             'format': 'sb0',
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            print('getting information from ytdlp')
+            logger.debug('getting information from ytdlp')
             info = ydl.extract_info(url, download = False)
-            #print(json.dumps(ydl.sanitize_info(info)), file=open('yt_dlp_video.json', 'w'))
+            #logger.debug(json.dumps(ydl.sanitize_info(info)), file=open('yt_dlp_video.json', 'w'))
             
             found = False
             for format in info.get('formats'):
@@ -71,7 +74,7 @@ class SBGeneratorThread:
                     found = True
                     # fetch all images in format['fragments'] to tmp
                     # and generate special .sb file.
-                    #print(json.dumps(format),  file=open('yt_dlp_video.json', 'w'))
+                    #logger.debug(json.dumps(format),  file=open('yt_dlp_video.json', 'w'))
                     
                     width = int(format['width'])
                     height = int(format['height'])
@@ -86,18 +89,18 @@ class SBGeneratorThread:
                         durations.append(float(fragment['duration'])) # double
                         imagePath = tmpFolder + str(index + 1).zfill(8) + '.webp'
                         
-                        print('Downloading fragment ' + str(index + 1) + '/' + str(fCount))
+                        logger.debug('Downloading fragment ' + str(index + 1) + '/' + str(fCount))
                         res = requests.get(fragment['url'], stream = True)
                         if res.status_code == 200:
                             images.append(imagePath)
                             with open(imagePath, 'wb') as f:
                                 shutil.copyfileobj(res.raw, f)
                         else:
-                            print('Fragment download failed.')
+                            logger.error('Fragment download failed.')
                     
                     # create sbb file
                     with open(sbbPath, 'wb') as fp:
-                        print('Generating sbb file ' + sbbPath)
+                        logger.info('Generating sbb file ' + sbbPath)
                         I = struct.Struct('<I') # unsigned 4 bytes integer little-endian
                         d = struct.Struct('<d') # binary float double
                         
@@ -135,7 +138,7 @@ class SBGeneratorThread:
                         # write the index (64, 20 bytes per index)
                         offset = 64 + (20 * count) + 20 # start of image data
                         for index, imagePath in enumerate(images):
-                            #print('creating index ' + str(imagePath))
+                            #logger.debug('creating index ' + str(imagePath))
                             fp.write(I.pack(index)) # 4 bytes
                             fp.write(I.pack(offset)) # 4 bytes
                             
@@ -153,29 +156,29 @@ class SBGeneratorThread:
                         
                         # write the image data
                         for imagePath in images:
-                            #print('writing data ' + str(imagePath))
+                            #logger.debug('writing data ' + str(imagePath))
                             with open(imagePath, 'rb') as imagefp:
                                 while True:
                                     buffer = imagefp.read(65536)
                                     if (not buffer):
                                         break
                                     fp.write(buffer)
-                        print('Done generating sbb file ' + sbbPath)
+                        logger.debug('Done generating sbb file ' + sbbPath)
                     
             if (not found):
-                print('sb0 not found for video id ' + id)
+                logger.error('sb0 not found for video id ' + id)
                        
         # cleanup
         self._clean('sb')
     
     """ generate bif file
-    @deprecated We just pull the story 
+    @deprecated We just pull the story from yt-dlp and create a custom sbb filer
     """
     def _generateBif(self, video):
         with model.video.dataMutex():
             id = video.id
             filename = video.filename
-        print('generating bif for ' + filename)
+        logger.info('generating bif for ' + filename)
         
         fullFilename = '/videos/' + str(id) + '-1080p-' + filename
         
@@ -184,7 +187,7 @@ class SBGeneratorThread:
             
         # generate jpg images every 10s
         cmd = ['ffmpeg', '-i', fullFilename, '-threads', '2', '-r', str(1 / (INTERVAL / 1000)), '-s', '320x180', tmpFolder + '%08d.jpg']
-        print(cmd)
+        logger.debug(cmd)
         subprocess.call(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
         files = []
@@ -250,7 +253,7 @@ class SBGeneratorThread:
         fp.close()
         
         self._clean('biff')
-        print('done generating bif: ' + bifFilename)
+        logger.info('done generating bif: ' + bifFilename)
         
     def _clean(self, folder):
         # clear tmp folder
@@ -274,10 +277,10 @@ def _runThread():
     THREAD.run()
 
 def run():
-    print('sbgenerator run()')
+    logger.debug('sbgenerator run()')
     t = threading.Thread(target=_runThread)
     t.start()
 
 def close():
-    print('sbgenerator close()')
+    logger.debug('sbgenerator close()')
     THREAD.close()

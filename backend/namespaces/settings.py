@@ -14,6 +14,9 @@ import http.cookiejar as cookielib
 from threads import listfetch
 import server
 
+import logging
+logger = logging.getLogger('piworkout-server')
+
 # keys that can be saved from settings form
 KEYS = ['audioDelay', 'networkDelay', 'videoQuality', 'playlistUrl', 'youtubeCookie', 'googleAPIKey']
 
@@ -29,7 +32,7 @@ def data():
 
 def receive(event, queue):
     if (event['method'] == 'PUT'):
-        print('updating settings')
+        logger.info('updating settings')
         for key in event['data']:
             if key in KEYS:
                 value = event['data'][key]
@@ -68,7 +71,7 @@ def receive(event, queue):
                     
                     f.write('\t'.join([domain, 'TRUE', path, httpOnly, str(expiration), name, value]) + '\n')
                 except:
-                    print(f'exception in converting cookie on line {line}')
+                    logger.warning(f'exception in converting cookie on line {line}')
             f.close()
             
             # update listfetch cookiejar

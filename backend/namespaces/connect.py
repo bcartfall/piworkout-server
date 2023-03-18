@@ -18,8 +18,11 @@ import os
 #import google.oauth2.credentials
 import google_auth_oauthlib.flow
 
+import logging
+logger = logging.getLogger('piworkout-server')
+
 def receive(event, queue):
-    print('connect.receive()', event)
+    logger.info('connect.receive()', event)
     if (event['method'] == 'GET' and event['action'] == 'authorizationUrl'):
         authorization_url = None
         # Use the client_secret.json file to identify the application requesting
@@ -34,7 +37,7 @@ def receive(event, queue):
         # configured in the API Console. If this value doesn't match an authorized URI,
         # you will get a 'redirect_uri_mismatch' error.
         flow.redirect_uri = event['redirectUri']
-        print('Creating ouath request for ' + event['redirectUri'])
+        logger.info('Creating ouath request for ' + event['redirectUri'])
 
         # Generate URL for request to Google's OAuth 2.0 server.
         # Use kwargs to set optional request parameters.
@@ -50,9 +53,9 @@ def receive(event, queue):
             'authorizationUrl': authorization_url
         })
     elif (event['method'] == 'PUT' and 'state' in event):
-        print('generating token', event)
-        print('scopes=' + event['scope'])
-        print('state=' + event['state'])
+        logger.info('generating token', event)
+        logger.debug('scopes=' + event['scope'])
+        logger.debug('state=' + event['state'])
         
         flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
             '/app/auth/client_secret.json',
@@ -76,7 +79,7 @@ def receive(event, queue):
         }
         
         if (credentials.refresh_token == None or credentials.refresh_token == ''):
-            print('Error: No refresh token received')
+            logger.warning('Error: No refresh token received')
             return
         
         model.settings.put('youtubeApiToken', json.dumps(data))

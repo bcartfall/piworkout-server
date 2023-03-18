@@ -22,6 +22,9 @@ import http.cookiejar as cookielib
 from threads import downloader, listfetch, sbgenerator
 from namespaces import videos
 
+import logging
+logger = logging.getLogger('piworkout-server')
+
 #
 STATUS_INIT = 1
 STATUS_DOWNLOADING_VIDEO = 2
@@ -227,7 +230,7 @@ class VideoModel:
 
         if (DEBUG):
             with self._mutex:
-                print('debug=True Deleting videos.')
+                logger.debug('debug=True Deleting videos.')
                 cursor = self._db.cursor()
                 cursor.execute('DELETE FROM videos')
                 self._db.commit()
@@ -307,10 +310,10 @@ class VideoModel:
     def remove(self, video: Video, lock: bool = True):
         if (lock):
             self._dataMutex.acquire()
-        print('model.video().remove() removing id=' + str(video.id) + ', videoId=' + video.videoId)
+        logger.debug('model.video().remove() removing id=' + str(video.id) + ', videoId=' + video.videoId)
         self._items.remove(video)
         for t in self._items:
-            print('  id=' + str(t.id) + ', videoId=' + t.videoId)
+            logger.debug('  id=' + str(t.id) + ', videoId=' + t.videoId)
 
         downloader.THREAD.remove(video) # remove from download queue
 
@@ -388,18 +391,18 @@ class VideoModel:
         Fetch list from YouTube API.
         Throws: RefreshError, ServiceUnavailable, RetryError, Exception
         """
-        print('model.video.fetch()')
+        logger.info('model.video.fetch()')
 
         youtube = self.getYouTube()
             
         if (youtube == None):
-            print('  no credentials created yet')
+            logger.warning('  no credentials created yet')
             return None
 
         # get playlistId
         playerlistUrl = self._settings.get('playlistUrl', '')
         if (playerlistUrl == ''):
-            print('playlistUrl not set')
+            logger.warning('playlistUrl not set')
             return
             
         parsed = urlparse(playerlistUrl)
@@ -424,11 +427,11 @@ class VideoModel:
         ytVideos = []
 
         for item in response['items']:
-            #print(json.dumps(item))
+            #logger.debug(json.dumps(item))
             order = 0
             videoId = item['contentDetails']['videoId']
             url = f'https://www.youtube.com/watch?v={videoId}'
-
+            
             with self._mutex:
                 # check if exists in DB
                 cursor = self._db.cursor()
@@ -436,19 +439,19 @@ class VideoModel:
                 row = cursor.fetchone()
                 if (row != None):
                     # found
-                    print(f' Already exists videoId={videoId}')
+                    #logger.debug(f'  Already exists videoId={videoId}')
                     ytVideos.append(self.byVideoId(videoId=videoId, lock=False))
                     continue
 
             # set video information
             with yt_dlp.YoutubeDL({}) as ydl:
-                print('getting file information from youtube')
+                logger.debug('getting file information from youtube')
                 info = ydl.extract_info(url, download = False)
 
                 # ydl.sanitize_info makes the info json-serializable
-                #print('------------------------------- dumping ydl info')
+                #logger.debug('------------------------------- dumping ydl info')
                 # save info to file
-                #print(json.dumps(ydl.sanitize_info(info)),  file=open('yt_dlp_video.json', 'w'))
+                #logger.debug(json.dumps(ydl.sanitize_info(info)),  file=open('yt_dlp_video.json', 'w'))
                 video = Video(
                     id=0, 
                     order=order, 
@@ -493,7 +496,7 @@ class VideoModel:
                 f.close()
 
             # add to items and add to downloader queue
-            print(f' Adding videoId={video.videoId}')
+            logger.info(f' Adding videoId={video.videoId}')
             self._items.append(video)
 
             # add to downloader queue
@@ -511,7 +514,7 @@ class VideoModel:
                         break
                 if (not found):
                     # delete
-                    #print('  removing id=' + str(video.id) + ', videoId=' + video.videoId)
+                    #logger.info('  removing id=' + str(video.id) + ', videoId=' + video.videoId)
                     self.remove(video, False)
                     change = True
                 
@@ -527,10 +530,10 @@ class VideoModel:
 
                     ytVideo = ytVideos[ytIndex]
                     nItems.append(ytVideo)
-                    #print('yt add ' + str(ytVideo.id))
+                    #logger.info('yt add ' + str(ytVideo.id))
                     if (ytVideo.order != ytIndex):
                         # update order in DB
-                        print(f'  Updating order of {ytVideo.videoId} to {ytIndex}.')
+                        logger.info(f'  Updating order of {ytVideo.videoId} to {ytIndex}.')
                         ytVideo.order = ytIndex
                         self.save(ytVideo, False)
                         change = True
@@ -540,6 +543,6 @@ class VideoModel:
 
         if (change):
             videos.broadcast()
-        print('done fetch')
+        logger.info('done fetch')
 
 video = VideoModel(db, mutex, settings)

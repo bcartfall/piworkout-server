@@ -120,6 +120,11 @@ export class Controller {
     return this._client;
   }
 
+  generateUuid() {
+    // non compliant uuid like random string
+    return Math.random().toString(36).substring(2, 15);
+  }
+
   setSettings(settings) {
     this._settings = settings;
     this._setSettings(settings);
