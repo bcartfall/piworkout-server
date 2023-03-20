@@ -11,3 +11,6 @@ videos/*
 !videos/README.md
 backend/yt_dlp_video.json
 backend/log/*.log
+frontend/ssl/*
+ssl/*
+!ssl/README.md

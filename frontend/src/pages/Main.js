@@ -4,7 +4,7 @@
  * See README.md
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, } from 'react';
 import { Alert, Button } from '@mui/material';
 import PiVideo from '../components/PiVideo';
 import SettingsIcon from '@mui/icons-material/Settings';
@@ -12,6 +12,7 @@ import { Link, useSearchParams, useNavigate } from "react-router-dom";
 
 export default function Main({ controller, videos, failedToConnect }) {
   const navigate = useNavigate();
+  const sendingApi = useRef(false); // only send connect request once
 
   const [searchParams, ] = useSearchParams();
 
@@ -24,6 +25,25 @@ export default function Main({ controller, videos, failedToConnect }) {
 
     // update title
     controller.setTitle('');
+
+    if (!sendingApi.current) {
+      // connect with YouTube API
+      sendingApi.current = true;
+      if (searchParams.get('state')) {
+        // update api with state
+        const data = {
+          'namespace': 'connect',
+          'method': 'PUT',
+          'state': searchParams.get('state'),
+          'scope': searchParams.get('scope'),
+          'stateUrl': window.location.href,
+          'redirectUri': window.location.protocol + '//' + window.location.host + '/',
+        };
+        console.log('sending api state', data);
+        controller.send(data);
+        navigate('/');
+      }
+    }
   }, [controller, navigate, searchParams]);
 
   let videoElement;

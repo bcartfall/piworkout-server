@@ -30,12 +30,14 @@ export class Controller {
 
     // load localSettings
     if (isElectron) {
-      this._localSettings = window.electron.store.get('settings');
-      if (!this._localSettings) {
-        this._localSettings = {};
-      }
+      this._localSettings = {
+        ssl: true,
+        backendHost: null,
+        ...window.electron.store.get('settings'),
+      };
     } else {
       this._localSettings = {
+        ssl: true,
         backendHost: window.location.host,
       };
     }

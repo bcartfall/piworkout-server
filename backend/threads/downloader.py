@@ -121,7 +121,7 @@ class DownloaderThread:
             self._currentVideo.progress = model.VideoProgress()
             self._previousWeight = 0
             url = self._currentVideo.url
-            logger.info('downloading next item from queue', self._currentVideo.videoId)
+            logger.info('downloading next item from queue ' + str(self._currentVideo.videoId))
             id = self._currentVideo.id
             filename = self._currentVideo.filename
             

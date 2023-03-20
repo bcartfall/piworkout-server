@@ -36,7 +36,9 @@ Copy `.env-sample` to `.env` and configure.
 
 Setup YouTube API and URI redirects at https://console.cloud.google.com/getting-started. Download credential file to `backend/client_secret.json`.
 
-YouTube API requires redirect URIs to be a top level domain or localhost. Use a DNS service like https://freedns.afraid.org/ or your own domain to connect with YouTube.
+YouTube API requires redirect URIs to be a top level domain or localhost. Use a DNS service like https://freedns.afraid.org/, nip.io, or your own domain to connect with YouTube.
+
+Install or create self signed TLS/SSL certificates to `./ssl/cert.pem` and `./ssl/key.pem`.
 
 Run server docker containers:
 
@@ -52,7 +54,7 @@ bash ./build_react.bash
 
 # Setup
 
-Open the web server in your browser `http://$APP_HOST:$APP_PORT`. Connect the application with your YouTube account. Set the `Playlist URL` in the settings. Copy (optional) your YouTube cookies to enable `Mark as Viewed` support.
+Open the web server in your browser `https://$APP_HOST:$APP_PORT`. Connect the application with your YouTube account. Set the `Playlist URL` in the settings. Copy (optional) your YouTube cookies to enable `Mark as Viewed` support.
 
 
 # Licence

@@ -37,7 +37,7 @@ export default class Client {
         return;
       }
       try {
-        this._ws = new WebSocket('ws://' + backendHost + '/backend'); // ws://localhost:5000/backend
+        this._ws = new WebSocket('wss://' + backendHost + '/backend'); // wss://localhost:5000/backend
       } catch (e) {
         this._initResolve = null;
         reject(e);
