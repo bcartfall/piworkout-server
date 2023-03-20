@@ -7,10 +7,10 @@ client_secret.json
 __pycache__
 backend/db/cookies.txt
 backend/db/database.sqlite3
+backend/yt_dlp_video.json
+backend/log/*
+!backend/log/README.md
 videos/*
 !videos/README.md
-backend/yt_dlp_video.json
-backend/log/*.log
-frontend/ssl/*
 ssl/*
 !ssl/README.md
