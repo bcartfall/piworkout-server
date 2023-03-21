@@ -4,7 +4,7 @@
  * See README.md
  */
 
-import React from 'react';
+import React, { useRef, } from 'react';
 
 import { Card, Box, CardContent, CardMedia, Typography, Chip, LinearProgress, Grow } from '@mui/material';
 import { useDrag, useDrop } from 'react-dnd';
@@ -12,34 +12,71 @@ import { useNavigate } from "react-router-dom";
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import eStatus from '../enums/VideoStatus';
 
-export default function PiVideo({ video, controller }) {
+export default function PiVideo({ video, controller, index, moveVideo, }) {
+  const ref = useRef(null);
   const navigate = useNavigate();
   
-  const [{ opacity, }, dragRef] = useDrag(
-    () => ({
-      type: 'PiVideo',
-      item: { video, controller, },
-      collect: (monitor) => ({
-        opacity: monitor.isDragging() ? 0.5 : 1
-      })
-    }),
-    []
-  );
-
-  const[, dropRef] = useDrop({
+  const [{ handlerId }, drop] = useDrop({
     accept: 'PiVideo',
-    collect: monitor => ({
-      isOver: !!monitor.isOver()
-    }),
+    collect(monitor) {
+      return {
+        handlerId: monitor.getHandlerId(),
+      }
+    },
+    hover(item, monitor) {
+      if (!ref.current) {
+        return;
+      }
+      const dragIndex = item.index;
+      const hoverIndex = index;
+      // don't replace items with themselves
+      if (dragIndex === hoverIndex) {
+        return;
+      }
+      // determine rectangle on screen
+      const hoverBoundingRect = ref.current?.getBoundingClientRect();
+      // get vertical middle
+      const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
+      // determine mouse position
+      const clientOffset = monitor.getClientOffset()
+
+      // get pixels to the top
+      const hoverClientY = clientOffset.y - hoverBoundingRect.top
+
+      if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) {
+        return;
+      }
+
+      // dragging upwards
+      if (dragIndex > hoverIndex && hoverClientY > hoverMiddleY) {
+        return;
+      }
+
+      moveVideo(dragIndex, hoverIndex);
+
+      item.index = hoverIndex;
+    },
     drop(item, monitor) {
-      item.controller.send({
+      // item.video has moved to index item.index
+      controller.send({
         'namespace': 'videos',
         'action': 'order',
-        'fromId': item.video.id,
-        'toId': video.id,
+        'id': item.video.id,
+        'index': item.index,
       });
     },
-  });
+  })
+  const [{ isDragging }, drag] = useDrag({
+    type: 'PiVideo',
+    item: () => {
+      return { video, index }
+    },
+    collect: (monitor) => ({
+      isDragging: monitor.isDragging(),
+    }),
+  })
+  const opacity = isDragging ? 0 : 1
+  drag(drop(ref))  
 
   const playVideo = (event) => {
     // PiVideo component has been clicked
@@ -83,7 +120,7 @@ export default function PiVideo({ video, controller }) {
   duration += minutes.padStart(2, '0') + ':' + seconds.padStart(2, '0');
 
   return (
-    <div ref={(ref) => { dragRef(ref); dropRef(ref); }} key={video.id} style={{ opacity }} onClick={playVideo}>
+    <div ref={ref} key={video.id} style={{ opacity }} data-handler-id={handlerId} onClick={playVideo}>
       <Grow key={video.id} in={true}>
         <Card sx={{ display: 'flex', mb: 2 }} className="piVideo">
           <Box sx={{ position: 'relative', width: '30%', display: 'inherited', flexDirection: 'column' }}>

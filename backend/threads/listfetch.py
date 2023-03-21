@@ -194,7 +194,7 @@ class ListFetchThread:
             l = len(a)
 
             found = False
-            for video in model.video.items():
+            for video in model.video.getItems():
                 if (video.filename == a[l - 1]):
                     # found don't delete
                     found = True

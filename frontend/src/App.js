@@ -83,10 +83,10 @@ export default function App(props) {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Layout layout={layout} controller={controller.current} />}>
-            <Route index element={<Main controller={controller.current} connected={connected} videos={videos} />} />
+            <Route index element={<Main controller={controller.current} connected={connected} videos={videos} setVideos={setVideos} />} />
             <Route path="settings" element={<Settings controller={controller.current} connected={connected} settings={settings} />} />
             <Route path="player/:id" element={<Player controller={controller.current} settings={settings} />} />
-            <Route path="*" element={<Main controller={controller.current} connected={connected} videos={videos} />} />
+            <Route path="*" element={<Main controller={controller.current} connected={connected} videos={videos} setVideos={setVideos} />} />
           </Route>
         </Routes>
       </BrowserRouter>

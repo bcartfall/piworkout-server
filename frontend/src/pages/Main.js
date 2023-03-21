@@ -4,17 +4,28 @@
  * See README.md
  */
 
-import React, { useEffect, useRef, } from 'react';
+import React, { useEffect, useRef, useCallback, } from 'react';
 import { Alert, Button } from '@mui/material';
 import PiVideo from '../components/PiVideo';
 import SettingsIcon from '@mui/icons-material/Settings';
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
 
-export default function Main({ controller, videos, failedToConnect }) {
+export default function Main({ controller, videos, setVideos, failedToConnect }) {
   const navigate = useNavigate();
   const sendingApi = useRef(false); // only send connect request once
 
   const [searchParams, ] = useSearchParams();
+
+  const moveVideo = useCallback((dragIndex, hoverIndex) => {
+    let nVideos = [...videos];
+
+    const fromVideo = nVideos[dragIndex],
+      toVideo = nVideos[hoverIndex];
+      nVideos[dragIndex] = toVideo;
+      nVideos[hoverIndex] = fromVideo;
+
+    setVideos(nVideos);
+  }, [videos, setVideos,]);
 
   useEffect(() => {
     // check if we need to redirect to settings page
@@ -61,10 +72,10 @@ export default function Main({ controller, videos, failedToConnect }) {
     );
   } else {
     // list of videos
-    videoElement = videos.map((video) => {
+    videoElement = videos.map((video, index) => {
       if (video.title) {
         // must have a title
-        return <PiVideo key={video.id} video={video} controller={controller} />;
+        return <PiVideo key={video.id} index={index} video={video} controller={controller} moveVideo={moveVideo} />;
       }
       return '';
     });

@@ -26,7 +26,7 @@ def receive(event, queue):
             listfetch.fetchOnNextCycle()
         elif (event['action'] == 'order'):
             # Change order of videos
-            logger.debug('TODO Change Order') 
+            changeOrder(event, queue)
         elif (event['action'] == 'playerInformation'):
             # Get more information about video from youtube and update model
             getPlayerInformation(event, queue)
@@ -42,6 +42,72 @@ def data():
             #logger.debug('  id=' + str(item.id) + ', videoId=' + item.videoId)
             res.append(item.toObject())
     return res
+
+def changeOrder(event, queue):
+    logger.info('Changing order of video id=' + str(event['id']) + ' to index=' + str(event['index']))
+    
+    with model.video.dataMutex():
+        oVideos = model.video.getItems(lock=False)
+        nVideos = oVideos.copy()
+        fromVideo = model.video.byId(event['id'], lock=False)
+        toVideo = nVideos[event['index']]
+        
+        fromIndex = fromVideo.order
+        toIndex = toVideo.order
+        
+    if (fromIndex == toIndex):
+        logger.info('  no change in order')
+        return None
+    
+    # update youtube playlist
+    youtube = model.video.getYouTube(readonly=False)
+            
+    if (youtube == None):
+        logger.warning('  no oauth credentials')
+    else:
+        try:
+            request = youtube.playlistItems().update(
+                part='snippet',
+                body={
+                    'id': fromVideo.playlistItemId,
+                    'snippet': {
+                        'playlistId': model.video.getPlaylistId(),
+                        'position': toIndex,
+                        'resourceId': {
+                            'kind': 'youtube#video',
+                            'videoId': fromVideo.videoId,
+                        }
+                    }
+                }
+            )
+            
+            request.execute()
+        except:
+            logger.error('  error updating youtube playlist api')
+    
+    # update memory model
+    with model.video.dataMutex():
+        nVideos[toIndex] = fromVideo
+        inc = -1 if toIndex < fromIndex else 1
+        
+        # moving video
+        nVideos[toIndex] = fromVideo
+        fromVideo.order = toIndex
+        model.video.save(fromVideo, lock=False)
+        logger.debug(f'  moving {fromVideo.id} to index {toIndex}')
+        
+        # slide other videos to fill space
+        for i in range(fromIndex, toIndex, inc):
+            video = oVideos[i + inc]
+            nVideos[i] = video
+            video.order = i
+            model.video.save(video, lock=False)
+            logger.debug(f'  moving {video.id} to index {i}')
+            
+        model.video.setItems(nVideos, lock=False)
+        
+    # update (all) clients
+    broadcast()
 
 def getPlayerInformation(event, queue):
     logger.info('Getting more information about video ' + str(event['id']))
@@ -187,8 +253,8 @@ def putRating(event, queue):
         )
         request.execute()
 
-def broadcast():
-    server.broadcast({
+def broadcast(sender = None):
+    server.broadcast(obj={
         'namespace': 'videos',
         'videos': data(),
-    })
+    }, sender=sender)    

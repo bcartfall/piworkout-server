@@ -183,6 +183,7 @@ class Video:
     likes: int = 0,
     rating: str = 'none',
     sponsorblock: dict | None = None,
+    playlistItemId: str = '',
 
     def toObject(self):
         if (self.progress):
@@ -217,6 +218,7 @@ class Video:
             'likes': self.likes,
             'rating': self.rating,
             'sponsorblock': self.sponsorblock,
+            'playlistItemId': self.playlistItemId,
         }
 
 class VideoModel:
@@ -268,6 +270,7 @@ class VideoModel:
                     views=0, 
                     rating='None',
                     sponsorblock=None,
+                    playlistItemId='',
                 )
                 self._items.append(video)
                 if (video.status == STATUS_INIT):
@@ -277,8 +280,6 @@ class VideoModel:
                 if (not os.path.exists('/videos/' + str(video.id) + '-' + video.filename + '.sbb')):
                     # generate sb
                     sbgenerator.append(video)
-
-                
 
     def data(self, copy:bool = True, lock:bool = True):
         if (lock):
@@ -326,9 +327,23 @@ class VideoModel:
             self._dataMutex.release()
 
 
-    def items(self):
-        with self._dataMutex:
-            return self._items.copy()
+    def getItems(self, lock: bool = True):
+        if (lock):
+            self._dataMutex.acquire()
+        items = self._items.copy()
+        if (lock):
+            self._dataMutex.release()
+        return items
+    
+    def setItems(self, items, lock: bool = True):
+        """
+        Update list of videos
+        """
+        if (lock):
+            self._dataMutex.acquire()
+        self._items = items
+        if (lock):
+            self._dataMutex.release()
 
     def byVideoId(self, videoId: str, lock: bool = True):
         """
@@ -360,7 +375,18 @@ class VideoModel:
             self._dataMutex.release()
         return video
     
-    def getYouTube(self):
+    def byIndex(self, index: int, lock: bool = True):
+        """
+        Get video by index
+        """
+        if (lock):
+            self._dataMutex.acquire()
+        video = self._items[index]
+        if (lock):
+            self._dataMutex.release()
+        return video
+    
+    def getYouTube(self, readonly: bool = True):
         """
         Get youtube API object
         """
@@ -370,11 +396,11 @@ class VideoModel:
 
         oauthToken = self._settings.get('youtubeApiToken', '')
         apiKey = self._settings.get('googleAPIKey', '')
-        if (apiKey != ''):
+        if (apiKey != '' and readonly):
             youtube = googleapiclient.discovery.build(
                 api_service_name, api_version, developerKey=apiKey)
         elif (oauthToken != ''):
-            # no credentials created yet
+            # no oauth credentials created yet
             data = json.loads(oauthToken)
             credentials = google.oauth2.credentials.Credentials(
                 data['token'],
@@ -385,6 +411,24 @@ class VideoModel:
             youtube = googleapiclient.discovery.build(
                 api_service_name, api_version, credentials=credentials)
         return youtube
+    
+    def getPlaylistId(self):
+        """
+        Parse playlist id from url in settings
+        """
+        playerlistUrl = self._settings.get('playlistUrl', '')
+        if (playerlistUrl == ''):
+            logger.warning('playlistUrl not set')
+            return None
+            
+        parsed = urlparse(playerlistUrl)
+        if (parsed.scheme == ''):
+            # just an ID
+            playlistId = parsed.path
+        else:
+            qs = parse_qs(parsed.query)
+            playlistId = qs['list'][0]
+        return playlistId
 
     def fetch(self):
         """
@@ -400,23 +444,10 @@ class VideoModel:
             return None
 
         # get playlistId
-        playerlistUrl = self._settings.get('playlistUrl', '')
-        if (playerlistUrl == ''):
-            logger.warning('playlistUrl not set')
-            return
-            
-        parsed = urlparse(playerlistUrl)
-        if (parsed.scheme == ''):
-            # just an ID
-            playlistId = parsed.path
-        else:
-            qs = parse_qs(parsed.query)
-            playlistId = qs['list'][0]
-
         request = youtube.playlistItems().list(
             part="snippet,contentDetails",
             maxResults=50,
-            playlistId=playlistId
+            playlistId=self.getPlaylistId()
         )
         response = request.execute()
 
@@ -431,7 +462,7 @@ class VideoModel:
             order = 0
             videoId = item['contentDetails']['videoId']
             url = f'https://www.youtube.com/watch?v={videoId}'
-            
+                        
             with self._mutex:
                 # check if exists in DB
                 cursor = self._db.cursor()
@@ -440,7 +471,11 @@ class VideoModel:
                 if (row != None):
                     # found
                     #logger.debug(f'  Already exists videoId={videoId}')
-                    ytVideos.append(self.byVideoId(videoId=videoId, lock=False))
+                    aVideo = self.byVideoId(videoId=videoId, lock=False)
+                    ytVideos.append(aVideo)
+                    
+                    # set playlist item id
+                    aVideo.playlistItemId = item['id']
                     continue
 
             # set video information
@@ -472,6 +507,7 @@ class VideoModel:
                     status=STATUS_INIT,
                     progress=None,
                     sponsorblock=None,
+                    playlistItemId=item['id'],
                 )
 
                 thumbnailUrl = info.get('thumbnail')
