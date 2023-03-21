@@ -45,6 +45,7 @@ def receive(event, queue):
             # Enable offline access so that you can refresh an access token without
             # re-prompting the user for permission. Recommended for web server apps.
             access_type='offline',
+            prompt='consent',
             # Enable incremental authorization. Recommended as a best practice.
             include_granted_scopes='true')
 
@@ -77,6 +78,10 @@ def receive(event, queue):
             'client_secret': credentials.client_secret,
             'scopes': credentials.scopes
         }
+        
+        if (credentials.refresh_token == None or credentials.refresh_token == ''):
+            logger.warning('Error: No refresh token received')
+            return
         
         model.settings.put('youtubeApiToken', json.dumps(data))
         server.broadcast({
