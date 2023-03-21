@@ -33,6 +33,9 @@ def receive(event, queue):
         elif (event['action'] == 'rate'):
             # Submit rating change
             putRating(event, queue)
+        elif (event['action'] == 'remove'):
+            # Remove video
+            remove(event, queue)
 
 def data():
     res = []
@@ -108,6 +111,40 @@ def changeOrder(event, queue):
         
     # update (all) clients
     broadcast()
+    
+def remove(event, queue):
+    logger.info('Removing video id=' + str(event['id']))
+    
+    removeVideo = model.video.byId(event['id'])
+    if (removeVideo == None):
+        # no video found
+        return None
+    
+    # remove from youtube
+    youtube = model.video.getYouTube(readonly=False)
+    if (youtube == None):
+        logger.warning('  no oauth credentials')
+    else:
+        try:
+            request = youtube.playlistItems().delete(
+                id=removeVideo.playlistItemId,
+            )
+            
+            request.execute()
+        except:
+            logger.error('  error removing video from youtube playlist api')
+    
+    # remove from DB and memory model
+    with model.video.dataMutex():
+        videos = model.video.getItems(lock=False)
+        for index, video in enumerate(videos):
+            if (video.id == removeVideo.id):
+                del videos[index] # splice(index, 1)
+                break
+        model.video.remove(removeVideo, lock=False)
+        
+    # update (all) clients
+    broadcast()    
 
 def getPlayerInformation(event, queue):
     logger.info('Getting more information about video ' + str(event['id']))

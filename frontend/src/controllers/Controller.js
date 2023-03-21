@@ -4,12 +4,16 @@
  * See README.md
  */
 
+import CloseIcon from '@mui/icons-material/Close';
+import { IconButton, } from '@mui/material';
 import Client from '../websocket/Client';
 
 export const defaultSnack = {
   open: false,
   message: '',
   autoHideDuration: 2500,
+  onClose: () => {},
+  action: null, // defined in method as close icon
 };
 
 export class Controller {
@@ -108,6 +112,21 @@ export class Controller {
       open: true,
       ...data,
     };
+
+    if (!newLayout.snack.action) {
+      // default action
+      newLayout.snack.action = (
+        <IconButton
+          size="small"
+          aria-label="close"
+          color="inherit"
+          onClick={newLayout.onClose}
+        >
+          <CloseIcon fontSize="small" />
+        </IconButton>
+      );
+    }
+
     this.setLayout(newLayout);
   }
 

@@ -11,19 +11,21 @@ import PiVideoPlayListItem from '../components/PiVideoPlayListItem';
 export default React.forwardRef(function VideoList({ controller, playVideo, currentVideo, }, ref) {
   const [videos, setVideos] = useState(controller.getVideos());
 
+  const updateVideos = (nVideos) => {
+    setVideos([...nVideos]);
+  };
+
   useImperativeHandle(ref, () => {
     return {
-      updateVideos: (nVideos) => {
-        setVideos([...nVideos]);
-      },
+      updateVideos,
     };
-  }, [setVideos,]);
+  }, []);
 
   return (
     <>
       {videos.map((video, index) => {
         if (video.title) {
-          return <PiVideoPlayListItem key={video.id} index={index} video={video} active={currentVideo.id === video.id} controller={controller} playVideo={playVideo} />;
+          return <PiVideoPlayListItem key={video.id} updateVideos={updateVideos} index={index} video={video} active={currentVideo.id === video.id} controller={controller} playVideo={playVideo} />;
         }
         return '';
       })}

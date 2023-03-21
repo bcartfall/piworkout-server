@@ -4,17 +4,38 @@
  * See README.md
  */
 
-import React, { useRef, } from 'react';
+import React, { useRef, useState, } from 'react';
 
 import { Card, Box, CardContent, CardMedia, Typography, Chip, LinearProgress, Grow } from '@mui/material';
 import { useDrag, useDrop } from 'react-dnd';
 import { useNavigate } from "react-router-dom";
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import eStatus from '../enums/VideoStatus';
+import VideoContextMenu from './VideoContextMenu';
 
 export default function PiVideo({ video, controller, index, moveVideo, }) {
   const ref = useRef(null);
   const navigate = useNavigate();
+  const [contextMenu, setContextMenu] = useState(null);
+
+  const handleContextMenu = (event) => {
+    event.preventDefault();
+    setContextMenu(
+      contextMenu === null
+        ? {
+            mouseX: event.clientX + 2,
+            mouseY: event.clientY - 6,
+          }
+        : // repeated contextmenu when it is already open closes it with Chrome 84 on Ubuntu
+          // Other native context menus might behave different.
+          // With this behavior we prevent contextmenu from the backdrop to re-locale existing context menus.
+          null,
+    );
+  };
+
+  const handleContextClose = () => {
+    setContextMenu(null);
+  };
   
   const [{ handlerId }, drop] = useDrop({
     accept: 'PiVideo',
@@ -27,8 +48,9 @@ export default function PiVideo({ video, controller, index, moveVideo, }) {
       if (!ref.current) {
         return;
       }
-      const dragIndex = item.index;
+      const dragIndex = item.currentIndex;
       const hoverIndex = index;
+      
       // don't replace items with themselves
       if (dragIndex === hoverIndex) {
         return;
@@ -38,10 +60,10 @@ export default function PiVideo({ video, controller, index, moveVideo, }) {
       // get vertical middle
       const hoverMiddleY = (hoverBoundingRect.bottom - hoverBoundingRect.top) / 2;
       // determine mouse position
-      const clientOffset = monitor.getClientOffset()
+      const clientOffset = monitor.getClientOffset();
 
       // get pixels to the top
-      const hoverClientY = clientOffset.y - hoverBoundingRect.top
+      const hoverClientY = clientOffset.y - hoverBoundingRect.top;
 
       if (dragIndex < hoverIndex && hoverClientY < hoverMiddleY) {
         return;
@@ -52,30 +74,28 @@ export default function PiVideo({ video, controller, index, moveVideo, }) {
         return;
       }
 
-      moveVideo(dragIndex, hoverIndex);
+      moveVideo(item.video, hoverIndex, false);
 
-      item.index = hoverIndex;
+      item.currentIndex = hoverIndex;
     },
     drop(item, monitor) {
       // item.video has moved to index item.index
-      controller.send({
-        'namespace': 'videos',
-        'action': 'order',
-        'id': item.video.id,
-        'index': item.index,
-      });
+      console.log('fromIndex=' + item.startIndex, 'toIndex=' + index);
+      moveVideo(item.video, index, true);
     },
-  })
+  });
+
   const [{ isDragging }, drag] = useDrag({
     type: 'PiVideo',
     item: () => {
-      return { video, index }
+      return { video, startIndex: index, currentIndex: index };
     },
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
-  })
-  const opacity = isDragging ? 0 : 1
+  });
+
+  const opacity = isDragging ? 0.25 : 1
   drag(drop(ref))  
 
   const playVideo = (event) => {
@@ -120,39 +140,42 @@ export default function PiVideo({ video, controller, index, moveVideo, }) {
   duration += minutes.padStart(2, '0') + ':' + seconds.padStart(2, '0');
 
   return (
-    <div ref={ref} key={video.id} style={{ opacity }} data-handler-id={handlerId} onClick={playVideo}>
-      <Grow key={video.id} in={true}>
-        <Card sx={{ display: 'flex', mb: 2 }} className="piVideo">
-          <Box sx={{ position: 'relative', width: '30%', display: 'inherited', flexDirection: 'column' }}>
-            <Box className="cover">
-              <Box className="center">
-                <PlayArrowIcon fontSize="large" />
+    <div onContextMenu={handleContextMenu}>
+      <div ref={ref} key={video.id} style={{ opacity }} data-handler-id={handlerId} onClick={playVideo}>
+        <Grow key={video.id} in={true}>
+          <Card sx={{ display: 'flex', mb: 2 }} className="piVideo">
+            <Box sx={{ position: 'relative', width: '30%', display: 'inherited', flexDirection: 'column' }}>
+              <Box className="cover">
+                <Box className="center">
+                  <PlayArrowIcon fontSize="large" />
+                </Box>
               </Box>
+              <CardMedia
+                component="img"
+                image={controller.getVideoUrl(video.id + '-' + video.filename + ".jpg")}
+                alt="{video.title}"
+              />
+              <Box sx={{ position: 'absolute', right: 8, bottom: 8, fontSize: '0.8rem', borderRadius: 2, backgroundColor: 'black', p: 0.25, pl: 0.75, pr: 0.75 }}>{duration}</Box>
             </Box>
-            <CardMedia
-              component="img"
-              image={controller.getVideoUrl(video.id + '-' + video.filename + ".jpg")}
-              alt="{video.title}"
-            />
-            <Box sx={{ position: 'absolute', right: 8, bottom: 8, fontSize: '0.8rem', borderRadius: 2, backgroundColor: 'black', p: 0.25, pl: 0.75, pr: 0.75 }}>{duration}</Box>
-          </Box>
-          <Box sx={{ width: '70%', display: 'flex', flexDirection: 'column' }} className="content">
-            <CardContent sx={{ flex: '1 0 auto' }}>
-              <Typography component="div" className="title" variant="h6">
-                {video.title}
-              </Typography>
-              <Chip label={status} variant="outlined" />
-            </CardContent>
-            <Box sx={{ display: 'flex', alignItems: 'center', pl: 1, pb: 1 }}>
-              <Typography className="description" sx={{ overflow: 'hidden', maxHeight: 76, color: '#aaa' }}>
-                {video.description}
-              </Typography>
+            <Box sx={{ width: '70%', display: 'flex', flexDirection: 'column' }} className="content">
+              <CardContent sx={{ flex: '1 0 auto' }}>
+                <Typography component="div" className="title" variant="h6">
+                  {video.title}
+                </Typography>
+                <Chip label={status} variant="outlined" />
+              </CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', pl: 1, pb: 1 }}>
+                <Typography className="description" sx={{ overflow: 'hidden', maxHeight: 76, color: '#aaa' }}>
+                  {video.description}
+                </Typography>
+              </Box>
+              {progress > 0 &&
+                <LinearProgress className="videoPlayerProgress" color={color} variant="determinate" value={progress} />}
             </Box>
-            {progress > 0 &&
-              <LinearProgress className="videoPlayerProgress" color={color} variant="determinate" value={progress} />}
-          </Box>
-        </Card>
-      </Grow>
+          </Card>
+        </Grow>
+      </div>
+      <VideoContextMenu video={video} controller={controller} contextMenu={contextMenu} onClose={handleContextClose} />
     </div>
   );
 }

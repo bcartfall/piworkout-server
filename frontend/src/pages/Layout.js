@@ -7,11 +7,10 @@
 import React from 'react';
 import { Outlet, Link } from "react-router-dom";
 
-import { AppBar, Toolbar, Typography, useScrollTrigger, Box, Container, Fab, Fade, IconButton, Snackbar } from '@mui/material';
+import { AppBar, Toolbar, Typography, useScrollTrigger, Box, Fab, Fade, IconButton, Snackbar } from '@mui/material';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import LiveTvIcon from '@mui/icons-material/LiveTv';
 import SettingsIcon from '@mui/icons-material/Settings';
-import CloseIcon from '@mui/icons-material/Close';
 import ReplayIcon from '@mui/icons-material/Replay';
 
 function ScrollTop(props) {
@@ -52,7 +51,7 @@ function ScrollTop(props) {
 
 export default function Layout(props) {
   const { layout, controller } = props;
-  const { snack, title } = layout;
+  const { snack } = layout;
 
   const closeSnack = (event, reason) => {
     if (reason === 'clickaway') {
@@ -80,7 +79,6 @@ export default function Layout(props) {
             sx={{
               mr: 2,
               display: { xs: 'none', md: 'flex' },
-              fontFamily: 'monospace',
               fontWeight: 700,
               letterSpacing: '0rem',
               color: 'inherit',
@@ -117,14 +115,7 @@ export default function Layout(props) {
         message={snack.message}
         autoHideDuration={snack.autoHideDuration}
         onClose={closeSnack}
-        action={<IconButton
-          size="small"
-          aria-label="close"
-          color="inherit"
-          onClick={closeSnack}
-        >
-          <CloseIcon fontSize="small" />
-        </IconButton>}
+        action={snack.action}
         key="snackbar-top-right"
       />
     </>
