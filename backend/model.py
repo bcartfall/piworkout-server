@@ -9,7 +9,8 @@ import threading
 import time
 import json
 from dataclasses import dataclass
-import google.oauth2.credentials
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
 import googleapiclient.discovery
 import googleapiclient.errors
 from urllib.parse import urlparse, parse_qs
@@ -400,14 +401,26 @@ class VideoModel:
             youtube = googleapiclient.discovery.build(
                 api_service_name, api_version, developerKey=apiKey)
         elif (oauthToken != ''):
-            # no oauth credentials created yet
             data = json.loads(oauthToken)
-            credentials = google.oauth2.credentials.Credentials(
-                data['token'],
-                refresh_token=data['refresh_token'],
-                token_uri=data['token_uri'],
-                client_id=data['client_id'],
-                client_secret=data['client_secret'])
+            
+            credentials = Credentials.from_authorized_user_info(data)
+            
+            # check if token needs to be refreshed
+            if (credentials.expired):
+                logger.debug('Refreshing google access token.')
+                
+                # refresh expired token
+                try:
+                    credentials.refresh(Request())
+                    if (credentials.refresh_token == None or credentials.refresh_token == ''):
+                        logger.warning('Error: No refresh token found.')
+                        return
+                    
+                    logger.debug('Saving new token')
+                    self._settings.put('youtubeApiToken', credentials.to_json())
+                except:
+                    logger.error('Error refreshing token.')
+                
             youtube = googleapiclient.discovery.build(
                 api_service_name, api_version, credentials=credentials)
         return youtube

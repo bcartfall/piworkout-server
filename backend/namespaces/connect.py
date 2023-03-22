@@ -69,21 +69,12 @@ def receive(event, queue):
 
         # store the credentials
         credentials = flow.credentials
-
-        data = {
-            'token': credentials.token,
-            'refresh_token': credentials.refresh_token,
-            'token_uri': credentials.token_uri,
-            'client_id': credentials.client_id,
-            'client_secret': credentials.client_secret,
-            'scopes': credentials.scopes
-        }
         
         if (credentials.refresh_token == None or credentials.refresh_token == ''):
             logger.warning('Error: No refresh token received')
             return
         
-        model.settings.put('youtubeApiToken', json.dumps(data))
+        model.settings.put('youtubeApiToken', credentials.to_json())
         server.broadcast({
             'namespace': 'connect',
             'connected': True,
