@@ -120,7 +120,7 @@ export class Controller {
           size="small"
           aria-label="close"
           color="inherit"
-          onClick={newLayout.onClose}
+          onClick={() => {this.closeSnack()}}
         >
           <CloseIcon fontSize="small" />
         </IconButton>
