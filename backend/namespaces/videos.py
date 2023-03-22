@@ -4,12 +4,11 @@
  * See README.md
 """
 
-import json
-import google.oauth2.credentials
-import googleapiclient.discovery
-import googleapiclient.errors
+import urllib.parse
+from googleapiclient.errors import HttpError
 import time
 import requests
+import json
 
 from threads import listfetch
 import model, server
@@ -36,6 +35,9 @@ def receive(event, queue):
         elif (event['action'] == 'remove'):
             # Remove video
             remove(event, queue)
+        elif (event['action'] == 'add'):
+            # Add video
+            add(event, queue)
 
 def data():
     res = []
@@ -144,7 +146,89 @@ def remove(event, queue):
         model.video.remove(removeVideo, lock=False)
         
     # update (all) clients
-    broadcast()    
+    broadcast()
+
+def add(event, queue):
+    """
+    Add video
+    """
+    source = event['source']
+    url = event['url']
+    position = event['order'] or 0
+    if (position < 0):
+        position = 0
+    
+    logger.info(f'Adding video url={url}, source={source}')
+    
+    if (source == 'youtube'):
+        parsed_url = urllib.parse.urlparse(url)
+        qs = urllib.parse.parse_qs(parsed_url.query)
+        
+        videoId = qs['v'][0] or ''
+        if (videoId == ''):
+            logger.error('videoId not set.')
+            return None
+            
+        logger.info(f'  Adding youtube videoId={videoId} to position {position}')
+        
+        try:
+            youtube = model.video.getYouTube(readonly=False)
+            
+            if (youtube == None):
+                logger.warning('  no oauth credentials')
+                return None
+            
+            request = youtube.playlistItems().insert(
+                part='snippet',
+                body={
+                    'snippet': {
+                        'playlistId': model.video.getPlaylistId(),
+                        'position': position,
+                        'resourceId': {
+                            'kind': 'youtube#video',
+                            'videoId': videoId,
+                        }
+                    }
+                }
+            )
+            response = request.execute()
+        
+            nVideo = model.video.createYoutubeVideo(videoId=videoId, playlistItemId=response['id'])
+            
+        except HttpError as err:
+            logger.error(f'  Error adding video err.code={err.status_code} err.reason={err.reason}')
+        except:
+            logger.error('  Error adding video')
+            return None
+            
+        # update DB and memory
+        with model.video.dataMutex():
+            index = 0
+            videos = model.video.getItems(lock=False)
+            nVideos = []
+            
+            for video in videos:
+                if (index == position):
+                    nVideo.order = index
+                    nVideos.append(nVideo)
+                    model.video.save(nVideo, lock=False)
+                    index += 1
+                elif (nVideo.id == video.id): 
+                    continue
+                
+                nVideos.append(video)
+                if (video.order != index):
+                    video.order = index
+                    model.video.save(video, lock=False)
+                index += 1
+            
+            model.video.setItems(nVideos, lock=False)
+            
+        # update list of videos
+        broadcast()
+        
+    else:
+        logger.error('Video source not handled.')
 
 def getPlayerInformation(event, queue):
     logger.info('Getting more information about video ' + str(event['id']))

@@ -41,6 +41,7 @@ export default function VideoContextMenu({ video, controller, contextMenu, onClo
         'action': 'add',
         'url': video.url,
         'order': video.order,
+        'source': video.source,
       });
     };
 
