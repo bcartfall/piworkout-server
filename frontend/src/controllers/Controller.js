@@ -41,7 +41,7 @@ export class Controller {
       };
     } else {
       this._localSettings = {
-        ssl: true,
+        ssl: window.location.protocol === 'https:',
         backendHost: window.location.host,
       };
     }

@@ -23,13 +23,15 @@ export default class Client {
    * @param {string} backendHost If specified client will attempt to connect to host, else will load from settings
    * @returns 
    */
-  setup(backendHost = null) {
+  setup(backendHost = null, ssl = null) {
     return new Promise((resolve, reject) => {
       this._initResolve = resolve;
-
+      const localSettings = this._controller.getLocalSettings();
       if (!backendHost) {
-        const localSettings = this._controller.getLocalSettings();
         backendHost = localSettings.backendHost;
+      }
+      if (ssl === null) {
+        ssl = localSettings.ssl;
       }
       if (!backendHost) {
         this._hasBackendFailure = true;
@@ -37,7 +39,7 @@ export default class Client {
         return;
       }
       try {
-        this._ws = new WebSocket('wss://' + backendHost + '/backend'); // wss://localhost:5000/backend
+        this._ws = new WebSocket((ssl ? 'wss' : 'ws') + '://' + backendHost + '/backend'); // wss://localhost:5000/backend
       } catch (e) {
         this._initResolve = null;
         reject(e);
