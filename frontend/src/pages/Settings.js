@@ -6,7 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Divider, Typography, TextField, Select, Grid, MenuItem, FormControl, InputLabel, Grow, CircularProgress, Alert } from '@mui/material';
+import { Button, Divider, Typography, TextField, Select, Grid, MenuItem, FormControl, InputLabel, Grow, CircularProgress, Alert, FormControlLabel, Checkbox } from '@mui/material';
 import CloudOffIcon from '@mui/icons-material/CloudOff';
 import SaveIcon from '@mui/icons-material/Save';
 import YouTubeIcon from '@mui/icons-material/YouTube';
@@ -19,6 +19,7 @@ export default function Settings(props) {
   const [hasBackendFailure, setHasBackendFailure] = useState(controller.getClient().getHasBackendFailure());
   const [connecting, setConnecting] = useState(false);
   const [backendHost, setBackendHost] = useState(controller.getLocalSettings('backendHost', 'localhost:5000'));
+  const [ssl, setSsl] = useState(controller.getLocalSettings('ssl', true));
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -42,27 +43,32 @@ export default function Settings(props) {
       });
     }
 
-    if (backendHost !== controller.getLocalSettings('backendHost')) {
-      // attempt to connect to websocket and wait for init message
-      setConnecting(true);
+    // save local settings
+    if (controller.isElectron()) {
+      if (backendHost !== controller.getLocalSettings('backendHost') || ssl !== controller.getLocalSettings('ssl')) {
+        // attempt to connect to websocket and wait for init message
+        setConnecting(true);
 
-      controller.getClient().setup(backendHost).then(() => {
-        // success
-        setError(null);
-        setConnecting(false);
-        setHasBackendFailure(false);
-        props.setFailedToConnect(false);
+        controller.getClient().setup(backendHost, ssl).then(() => {
+          // success
+          setError(null);
+          setConnecting(false);
+          setHasBackendFailure(false);
+          props.setFailedToConnect(false);
 
-        // save
-        controller.setLocalSettings('backendHost', backendHost);
-      }).catch((response) => {
-        // failed to connect
-        setConnecting(false);
-        setHasBackendFailure(true);
-        setError('Error connecting to web socket at ' + backendHost + '.');
-      });
-      return;
+          // save
+          controller.setLocalSettings('backendHost', backendHost);
+          controller.setLocalSettings('ssl', ssl);
+        }).catch((response) => {
+          // failed to connect
+          setConnecting(false);
+          setHasBackendFailure(true);
+          setError('Error connecting to web socket at ' + backendHost + '.');
+        });
+        return;
+      }
     }
+    
 
     controller.snack({
       message: 'Settings updated.',
@@ -104,8 +110,11 @@ export default function Settings(props) {
             </Typography>
             <Divider sx={{ m: 2 }} />
             <Grid container spacing={2}>
-              <Grid item xs={12}>
+              <Grid item xs={10}>
                 <TextField fullWidth required label="Backend Host" value={backendHost} onChange={(e) => setBackendHost(e.target.value)} />
+              </Grid>
+              <Grid item xs={2}>
+                <FormControlLabel control={<Checkbox checked={ssl} onChange={(event) => {setSsl(event.target.checked);}} />} label="SSL" />
               </Grid>
             </Grid>
             <Button variant="contained" sx={{ mt: 2 }} fullWidth onClick={onSubmit}><SaveIcon sx={{ mr: 0.5 }} /> Save Settings</Button>
@@ -121,7 +130,6 @@ export default function Settings(props) {
       'namespace': 'connect',
       'method': 'GET',
       'action': 'authorizationUrl',
-      'redirectUri': controller.getUrl(''), // will open browser to backend
     });
   };
 
@@ -156,8 +164,11 @@ export default function Settings(props) {
           {controller.isElectron() && <>
             <Divider sx={{ m: 2 }} />
             <Grid container spacing={2}>
-              <Grid item xs={12}>
+              <Grid item xs={10}>
                 <TextField fullWidth required label="Backend Host" value={backendHost} onChange={(e) => setBackendHost(e.target.value)} />
+              </Grid>
+              <Grid item xs={2}>
+                <FormControlLabel control={<Checkbox checked={ssl} onChange={(event) => {setSsl(event.target.checked);}} />} label="SSL" />
               </Grid>
             </Grid>
           </>}
@@ -166,7 +177,7 @@ export default function Settings(props) {
             Provide a Google API Key or leave the API Key field blank and press the "Connect" button to use OAuth Authentication (recommended).
           </Typography>
           <br />
-          <TextField fullWidth required label="Google API Key" value={settings.googleAPIKey} onChange={(e) => onChange('googleAPIKey', e.target.value)} />
+          <TextField fullWidth label="Google API Key" value={settings.googleAPIKey} onChange={(e) => onChange('googleAPIKey', e.target.value)} />
           <br /><br />
           {connectElement}
           <Divider sx={{ m: 2 }} />

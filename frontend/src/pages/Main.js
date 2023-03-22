@@ -48,7 +48,7 @@ export default function Main({ controller, videos, setVideos, failedToConnect })
           'state': searchParams.get('state'),
           'scope': searchParams.get('scope'),
           'stateUrl': window.location.href,
-          'redirectUri': window.location.protocol + '//' + window.location.host + '/',
+          //'redirectUri': window.location.protocol + '//' + window.location.host + '/',
         };
         console.log('sending api state', data);
         controller.send(data);

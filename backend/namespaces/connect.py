@@ -6,7 +6,6 @@
 
 # namespace: connect
 # method: GET, PUT, or DELETE
-# redirectUri: URI to redirect back to
 # action (optional): authorizationUrl
 # state (optional)
 
@@ -36,8 +35,12 @@ def receive(event, queue):
         # match one of the authorized redirect URIs for the OAuth 2.0 client, which you
         # configured in the API Console. If this value doesn't match an authorized URI,
         # you will get a 'redirect_uri_mismatch' error.
-        flow.redirect_uri = event['redirectUri']
-        logger.info('Creating ouath request for ' + event['redirectUri'])
+        #flow.redirect_uri = event['redirectUri']
+        flow.redirect_uri = os.getenv('GOOGLE_OAUTH_REDIRECT_URI')
+        if (flow.redirect_uri == None):
+            logger.error('GOOGLE_OAUTH_REDIRECT_URI Redirect URI is not set in .env')
+            return None
+        logger.info('Creating ouath request for ' + flow.redirect_uri)
 
         # Generate URL for request to Google's OAuth 2.0 server.
         # Use kwargs to set optional request parameters.
@@ -62,7 +65,8 @@ def receive(event, queue):
             '/app/auth/client_secret.json',
             scopes=[event['scope']],
             state=event['state'])
-        flow.redirect_uri = event['redirectUri']
+        #flow.redirect_uri = event['redirectUri']
+        flow.redirect_uri = os.getenv('GOOGLE_OAUTH_REDIRECT_URI')
 
         authorization_response = event['stateUrl']
         flow.fetch_token(authorization_response=authorization_response)
