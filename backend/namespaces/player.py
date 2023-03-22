@@ -5,6 +5,7 @@
 """
 
 import time
+import json
 
 import model, server
 from threads import listfetch
@@ -46,7 +47,7 @@ def data():
     return MODEL.toObject()    
 
 def receive(event, queue):
-    logger.debug('player', event)
+    logger.debug('player event=' + json.dumps(event))
     if (event['action']):
         MODEL.action = event['action']
         
