@@ -4,14 +4,15 @@
  * See README.md
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Outlet, Link } from "react-router-dom";
 
-import { AppBar, Toolbar, Typography, useScrollTrigger, Box, Fab, Fade, IconButton, Snackbar } from '@mui/material';
+import { AppBar, Toolbar, Typography, useScrollTrigger, Box, Fab, Fade, IconButton, Snackbar, Button, Dialog, DialogTitle, DialogContent, DialogContentText, TextField, DialogActions, } from '@mui/material';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import LiveTvIcon from '@mui/icons-material/LiveTv';
 import SettingsIcon from '@mui/icons-material/Settings';
 import ReplayIcon from '@mui/icons-material/Replay';
+import AddLinkIcon from '@mui/icons-material/AddLink';
 
 function ScrollTop(props) {
   const { children, window } = props;
@@ -69,6 +70,59 @@ export default function Layout(props) {
     });
   };
 
+  ///////////////
+  // add url link
+  const [addUrlDialog, setAddUrlDialog] = useState(null);
+
+  const onAddUrl = () => {
+    // show add url dialog
+    let url = '';
+    const handleClose = () => {
+      setAddUrlDialog(null);
+    };
+    const handleSubmit = (event) => {
+      setAddUrlDialog(null);
+
+      // send
+      controller.send({
+        'namespace': 'videos',
+        'action': 'add',
+        'url': url,
+        'order': 0, // top
+        'source': '', // determine on server
+      });
+    };
+    const handleOnChange = (event) => {
+      url = event.target.value;
+    };
+
+    setAddUrlDialog(
+      <Dialog open={true} onClose={handleClose}>
+        <DialogTitle>Add Video</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Enter in YouTube URL to add video to playlist.
+          </DialogContentText>
+          <TextField
+            autoFocus
+            margin="dense"
+            id="url"
+            label="YouTube URL"
+            type="url"
+            fullWidth
+            variant="standard"
+            onChange={handleOnChange}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClose}>Cancel</Button>
+          <Button onClick={handleSubmit}>Add Video</Button>
+        </DialogActions>
+      </Dialog>
+    );
+  };
+  ///////////////
+
   return (
     <>
       <AppBar>
@@ -91,6 +145,10 @@ export default function Layout(props) {
             </Link>
           </Typography>
           <Box sx={{ flexGrow: 0 }}>
+            {addUrlDialog !== null && addUrlDialog}
+            <Button variant="outlined" size="small" onClick={onAddUrl}>
+              <AddLinkIcon />
+            </Button>
             <IconButton sx={{ mr: 2 }} onClick={refresh}>
               <ReplayIcon />
             </IconButton>

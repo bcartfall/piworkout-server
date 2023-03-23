@@ -9,6 +9,8 @@ from googleapiclient.errors import HttpError
 import time
 import requests
 import json
+from urllib.parse import urlparse, parse_qs
+from contextlib import suppress
 
 from threads import listfetch
 import model, server
@@ -160,12 +162,14 @@ def add(event, queue):
     
     logger.info(f'Adding video url={url}, source={source}')
     
+    if (source == ''):
+        # determine source
+        # currently only parse youtube
+        source = 'youtube'
+    
     if (source == 'youtube'):
-        parsed_url = urllib.parse.urlparse(url)
-        qs = urllib.parse.parse_qs(parsed_url.query)
-        
-        videoId = qs['v'][0] or ''
-        if (videoId == ''):
+        videoId = get_yt_id(url, ignore_playlist=True)
+        if (videoId == '' or videoId == None):
             logger.error('videoId not set.')
             return None
             
@@ -373,6 +377,25 @@ def putRating(event, queue):
             rating=rating
         )
         request.execute()
+
+def get_yt_id(url, ignore_playlist=False):
+    # Examples:
+    # - http://youtu.be/SA2iWivDJiE
+    # - http://www.youtube.com/watch?v=_oPAwA_Udwc&feature=feedu
+    # - http://www.youtube.com/embed/SA2iWivDJiE
+    # - http://www.youtube.com/v/SA2iWivDJiE?version=3&amp;hl=en_US
+    query = urlparse(url)
+    if query.hostname == 'youtu.be': return query.path[1:]
+    if query.hostname in {'www.youtube.com', 'youtube.com', 'music.youtube.com'}:
+        if not ignore_playlist:
+        # use case: get playlist id not current video in playlist
+            with suppress(KeyError):
+                return parse_qs(query.query)['list'][0]
+        if query.path == '/watch': return parse_qs(query.query)['v'][0]
+        if query.path[:7] == '/watch/': return query.path.split('/')[1]
+        if query.path[:7] == '/embed/': return query.path.split('/')[2]
+        if query.path[:3] == '/v/': return query.path.split('/')[2]
+   # returns None for invalid YouTube url
 
 def broadcast(sender = None):
     server.broadcast(obj={

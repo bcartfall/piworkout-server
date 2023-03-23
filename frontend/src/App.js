@@ -18,7 +18,7 @@ import '@fontsource/roboto/700.css';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { CircularProgress, Typography } from '@mui/material';
+import { CircularProgress, Typography, Dialog, DialogTitle, DialogContent, } from '@mui/material';
 
 import Layout from './pages/Layout';
 import Main from './pages/Main';
@@ -76,6 +76,56 @@ export default function App(props) {
       };
   }, [onKeyDown]);
 
+  /////////////////////////////////////////////////////////////
+  // drag and drop files/urls
+  const dragRef = useRef(0);
+  const [dialog, setDialog] = useState(null);
+
+  const onDrop = (event) => {
+    const url = event.dataTransfer.getData("Url").trim();
+    if (url !== "") {
+      // add youtube url to playlist
+      controller.current.send({
+        'namespace': 'videos',
+        'action': 'add',
+        'url': url,
+        'order': 0, // top
+        'source': '', // determine on server
+      });
+    }
+    setDialog(null);
+  };
+
+  const onDragEnter = (event) => {
+    dragRef.current++;
+    if (event.dataTransfer.types.includes("text/uri-list")) {
+      // show dragging dialog
+      //setOpacity(0.5);
+      setDialog(
+        <Dialog open={true}>
+          <DialogTitle>Add Video</DialogTitle>
+          <DialogContent>
+            <Typography>
+              Drop YouTube URL to Add Video to Playlist
+            </Typography>
+          </DialogContent>
+        </Dialog>
+      );
+    } else {
+      // clear dialog
+      setDialog(null);
+    }
+  };
+
+  const onDragLeave = (event) => {
+    dragRef.current--;
+
+    if (dragRef.current === 0) {
+      setDialog(null);
+    }
+  };
+  /////////////////////////////////////////////////////////////
+
   let routes = '';
 
   if (loaded) {
@@ -106,8 +156,9 @@ export default function App(props) {
     <DndProvider backend={HTML5Backend}>
       <ThemeProvider theme={darkTheme}>
         <CssBaseline />
-        <div className="app">
+        <div className="app" onDrop={onDrop} onDragEnter={onDragEnter} onDragLeave={onDragLeave}>
           {routes}
+          {dialog !== null && dialog}
         </div>
       </ThemeProvider>
     </DndProvider>
