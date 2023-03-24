@@ -153,7 +153,7 @@ export default function PiVideo({ video, controller, index, moveVideo, }) {
               <CardMedia
                 component="img"
                 image={controller.getVideoUrl(video.id + '-' + video.filename + ".jpg")}
-                alt="{video.title}"
+                alt={video.title}
               />
               <Box sx={{ position: 'absolute', right: 8, bottom: 8, fontSize: '0.8rem', borderRadius: 2, backgroundColor: 'black', p: 0.25, pl: 0.75, pr: 0.75 }}>{duration}</Box>
             </Box>

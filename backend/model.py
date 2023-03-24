@@ -295,6 +295,15 @@ class VideoModel:
 
     def dataMutex(self):
         return self._dataMutex
+    
+    def insert(self, video: Video):
+        with self._mutex:
+            # save to DB (if not exists)
+            cursor = self._db.cursor()
+            cursor.execute('INSERT INTO videos (videoId) VALUES (?)', (video.videoId,))
+            video.id = cursor.lastrowid
+            logger.debug('Inserted video into DB id=' + str(video.id))
+            self._db.commit()
 
     def save(self, video: Video, lock: bool = True):
         """
@@ -510,12 +519,7 @@ class VideoModel:
         # save to DB
         sharedObject['ytVideos'].append(video)
         sharedObject['change'] = True
-        with self._mutex:
-            # save to DB (if not exists)
-            cursor = self._db.cursor()
-            cursor.execute('INSERT INTO videos (videoId) VALUES (?)', (video.videoId,))
-            video.id = cursor.lastrowid
-            self._db.commit()
+        self.insert(video=video)
         self.save(video = video, lock = False)
 
         # save video thumbnail
@@ -528,7 +532,8 @@ class VideoModel:
 
         # add to items and add to downloader queue
         logger.info(f' Adding videoId={video.videoId}')
-        self._items.append(video)
+        with self._dataMutex:
+            self._items.append(video)
 
         # add to downloader queue
         downloader.THREAD.append(video)

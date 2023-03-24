@@ -33,7 +33,7 @@ def main():
     listfetch.run()
     sbgenerator.run()
 
-    # socket server
+    # websocket server
     host = os.environ['BACKEND_HOST']
     port = os.environ['BACKEND_PORT']
     logger.info('Starting websocket on ' + host + ':' + port)

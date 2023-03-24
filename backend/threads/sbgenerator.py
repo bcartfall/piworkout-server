@@ -42,9 +42,13 @@ class SBGeneratorThread:
         
     def _generateSB(self, video):
         with model.video.dataMutex():
+            source = video.source
             id = video.id
             filename = video.filename
             url = video.url
+            
+        if (source != 'youtube'):
+            return None
             
         # check if sb file already exists
         sbbPath = '/videos/' + str(id) + '-' + filename + '.sbb'
@@ -110,23 +114,23 @@ class SBGeneratorThread:
                         # version (8, 4 bytes)
                         fp.write(I.pack(0))
                         
-                        # image count (12, 4 bytes)
+                        # image count (12, 4 bytes) (number of BIG storyboard images)
                         count = len(images)
                         fp.write(I.pack(count))
                         
-                        # width (16, 4 bytes)
+                        # width (16, 4 bytes) (width of smaller images)
                         fp.write(I.pack(width))
                 
-                        # height (20, 4 bytes)
+                        # height (20, 4 bytes) (height of smaller images)
                         fp.write(I.pack(height))
 
-                        # fps (24, 8 bytes)
+                        # fps (24, 8 bytes) (fps for each image frame [smaller image]) (e.g. fps of 0.1 would mean a small image every 10s)
                         fp.write(d.pack(fps))
 
-                        # rows (32, 4 bytes)
+                        # rows (32, 4 bytes) (rows in a BIG storyboard image)
                         fp.write(I.pack(rows))
 
-                        # columns (36, 4 bytes)
+                        # columns (36, 4 bytes) (cols in a BIG storyboard image)
                         fp.write(I.pack(columns))
                         
                         # reserved for future expansion (40-64)
@@ -139,14 +143,14 @@ class SBGeneratorThread:
                         offset = 64 + (20 * count) + 20 # start of image data
                         for index, imagePath in enumerate(images):
                             #logger.debug('creating index ' + str(imagePath))
-                            fp.write(I.pack(index)) # 4 bytes
-                            fp.write(I.pack(offset)) # 4 bytes
+                            fp.write(I.pack(index)) # 4 bytes (index of this BIG storyboard image)
+                            fp.write(I.pack(offset)) # 4 bytes (position of binary image data for BIG image)
                             
                             size = os.path.getsize(imagePath)
                             offset += size
                             
-                            fp.write(I.pack(size)) # 4 bytes
-                            fp.write(d.pack(durations[index])) # 8 bytes
+                            fp.write(I.pack(size)) # 4 bytes, (length of bytes of BIG image data)
+                            fp.write(d.pack(durations[index])) # 8 bytes (64bit float for duration of this BIG story board image)
                             
                         # terminate index
                         fp.write(bytearray([0xff, 0xff, 0xff, 0xff])) # bytes

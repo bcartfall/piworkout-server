@@ -9,26 +9,28 @@ import websockets
 import json
 import os
 import threading
+import sys
+from queue import Queue, Empty
 
 import model
 
-from namespaces import settings, connect, videos, player, ping
+from namespaces import settings, connect, videos, player, ping, file_upload
 
 import logging
 logger = logging.getLogger('piworkout-server')
 
 CLIENTS = set()
-MUTEX = threading.Lock()
 MESSAGE_ID = 0
 
-async def receive(event, queue):
+async def receiveJson(event, queue):
     """
     Handle message from client
     """
     if (not 'namespace' in event):
         logger.debug('namespace not found in message')
         return
-    #logger.debug(event)
+    if (event['namespace'] != 'up'):
+        logger.debug(event)
 
     # handle message
     namespace = event['namespace']
@@ -48,16 +50,67 @@ async def receive(event, queue):
         case _:
             logger.warning(f'  namespace {namespace} not handled.')
 
-async def relay(queue, websocket):
-    while True:
-        # todo Implement custom logic based on queue.qsize() and
-        # websocket.transport.get_write_buffer_size() here.
-        message = await queue.get()
-        await websocket.send(message)
+            
+async def receiveBinary(binaryMessage, queue):
+    # magic number (8), version (8), namespace (28) .... 
+    magicNumber = binaryMessage[0:8]
+    if (magicNumber != b'\x89webSOK\n'):
+        logger.warn('Incoming binary message did not contain correct magicNumber.')
+        return None
+    
+    #version = message[8:16].decode('ascii').rstrip('\x00')
+    namespace = binaryMessage[16:44].decode('ascii').rstrip('\x00')
+    match namespace:
+        case 'file-upload':
+            file_upload.receive(binaryMessage, queue)
+        case _:
+            logger.warning(f'  binary namespace {namespace} not handled.')
+
+
+async def consumer_handler(websocket, queue):
+    # receive messages
+    try:
+        async for message in websocket:
+            jsonMessage = None
+            binaryMessage = None
+            try:
+                # determine if a binary message
+                if (message[0] == '{'):
+                    # normal json message
+                    jsonMessage = json.loads(message)
+                else:
+                    # binary message
+                    binaryMessage = message
+            except ValueError:
+                logger.debug('Decoding json message has failed.')
+                logger.debug(message)
+            if (jsonMessage):
+                await receiveJson(jsonMessage, queue)
+            elif (binaryMessage):
+                await receiveBinary(binaryMessage, queue)
+                
+            await asyncio.sleep(0)  # yield control to the event loop
+    except websockets.exceptions.ConnectionClosed:
+        logger.debug('  client disconnected early')
+
+        
+async def producer_handler(websocket, queue):
+    # send messages
+    try:
+        while True:
+            # get message from queue, block if not messages
+            try:
+                message = queue.get(False)
+                await websocket.send(message)
+                queue.task_done()
+            except Empty:
+                await asyncio.sleep(0)  # yield control to the event loop
+    except websockets.exceptions.ConnectionClosed:
+        logger.warning('Connecting closed while attempting to send.')
 
 async def handler(websocket):
-    queue = asyncio.Queue()
-    relay_task = asyncio.create_task(relay(queue, websocket))
+    logger.debug('Creating thread safe queue.')
+    queue = Queue()
     CLIENTS.add(queue)
     logger.info('  client connected count=' + str(len(CLIENTS)))
     try:
@@ -73,54 +126,48 @@ async def handler(websocket):
         }
 
         try:
-            send(queue, obj)
+            queue.put(json.dumps(obj))
         except websockets.exceptions.ConnectionClosed:
             logger.debug('  client disconnected early')
+        except:
+            logger.error('  error sending init message')
 
-        # receive messages
-        try:
-            async for message in websocket:
-                parsed = None
-                try:
-                    parsed = json.loads(message)
-                except ValueError:
-                    logger.debug('Decoding json message has failed.')
-                    logger.debug(message)
-                if (parsed):
-                    await receive(parsed, queue)
-        except websockets.exceptions.ConnectionClosed:
-            logger.debug('  client disconnected early')
+        # receive messages / send messages
+        consumer_task = asyncio.ensure_future(consumer_handler(websocket, queue))
+        producer_task = asyncio.ensure_future(producer_handler(websocket, queue))
+        done, pending = await asyncio.wait(
+            [consumer_task, producer_task],
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+        for task in pending:
+            task.cancel()
     finally:
         CLIENTS.remove(queue)
-        relay_task.cancel()
         logger.info('  client disconnected count=' + str(len(CLIENTS)))
 
 def send(queue, obj):
     global MESSAGE_ID
-    with MUTEX:
-        MESSAGE_ID += 1
-        obj['messageId'] = MESSAGE_ID
-        queue.put_nowait(json.dumps(obj))
+    MESSAGE_ID += 1
+    obj['messageId'] = MESSAGE_ID
+    queue.put(json.dumps(obj))
 
 def broadcast(obj, sender = None):
     """
     Send message to all users. If sender is specified do not send back to sender.
     """
     global MESSAGE_ID
-    with MUTEX:
-        MESSAGE_ID += 1
-        obj['messageId'] = MESSAGE_ID
-        for queue in CLIENTS:
-            if (sender == queue):
-                continue
-            queue.put_nowait(json.dumps(obj))
+    MESSAGE_ID += 1
+    obj['messageId'] = MESSAGE_ID
+    for queue in CLIENTS:
+        if (sender == queue):
+            continue
+        queue.put(json.dumps(obj))
 
-
-async def main():
-    host = os.environ['BACKEND_HOST']
-    port = os.environ['BACKEND_PORT']
-    async with websockets.serve(handler, host, port):
-        await asyncio.Future()  # run forever
 
 def start():
-    asyncio.run(main())
+    host = os.environ['BACKEND_HOST']
+    port = os.environ['BACKEND_PORT']
+    
+    start_server = websockets.serve(handler, host, port)
+    asyncio.get_event_loop().run_until_complete(start_server)
+    asyncio.get_event_loop().run_forever()

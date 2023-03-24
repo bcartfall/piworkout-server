@@ -124,19 +124,20 @@ def remove(event, queue):
         # no video found
         return None
     
-    # remove from youtube
-    youtube = model.video.getYouTube(readonly=False)
-    if (youtube == None):
-        logger.warning('  no oauth credentials')
-    else:
-        try:
-            request = youtube.playlistItems().delete(
-                id=removeVideo.playlistItemId,
-            )
-            
-            request.execute()
-        except:
-            logger.error('  error removing video from youtube playlist api')
+    if (removeVideo.source == 'youtube'):
+        # remove from youtube
+        youtube = model.video.getYouTube(readonly=False)
+        if (youtube == None):
+            logger.warning('  no oauth credentials')
+        else:
+            try:
+                request = youtube.playlistItems().delete(
+                    id=removeVideo.playlistItemId,
+                )
+                
+                request.execute()
+            except:
+                logger.error('  error removing video from youtube playlist api')
     
     # remove from DB and memory model
     with model.video.dataMutex():
@@ -243,6 +244,10 @@ def getPlayerInformation(event, queue):
             logger.warning(' Error: video not found.')
             return None
         sponsorblock = video.sponsorblock
+        source = video.source
+    
+    if (source != 'youtube'):
+        return None
     
     youtube = model.video.getYouTube()
     if (youtube == None):
@@ -292,7 +297,8 @@ def getPlayerInformation(event, queue):
         rating = item['rating'] # like / dislike / none
         
     # get sponsorblock information (cache for a few hours)
-    logger.debug('sponsorblock=', str(sponsorblock))
+    if (sponsorblock != None):
+        logger.debug('sponsorblock=', str(sponsorblock))
     if (sponsorblock == None or (sponsorblock and sponsorblock['expires_at'] < time.time())):
         # cache expired or sponsorblock not set
         sponsorblock = {
@@ -401,4 +407,4 @@ def broadcast(sender = None):
     server.broadcast(obj={
         'namespace': 'videos',
         'videos': data(),
-    }, sender=sender)    
+    }, sender=sender)

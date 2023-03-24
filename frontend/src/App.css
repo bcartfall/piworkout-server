@@ -118,6 +118,6 @@ a {
   margin-top: -10px;
 }
 
-.videoPlayerProgress .MuiLinearProgress-bar {
+.videoPlayerProgress .MuiLinearProgress-bar, .fileUploadProgress .MuiLinearProgress-bar {
   transition: none;
 }

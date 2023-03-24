@@ -360,24 +360,39 @@ export default React.memo(function Player({ controller, settings, }) {
     }
   }, [updateVideoPosition, currentVideo, controller, navigate,]);
 
+  const getResolution = (video, source) => {
+    // determine resolution (browser based player will use best video possible)
+    let resolution = '';
+    if (video.height >= 2160) {
+      resolution = '4K';
+    } else if (video.height >= 1440) {
+      resolution = '1440p';
+    } else if (video.height >= 1080) {
+      resolution = '1080p';
+    } else if (video.height >= 720 && source === 'info') {
+      resolution = '720p';
+    } else if (video.height >= 480 && source === 'info') {
+      resolution = '480p';
+    } else if (source === 'info') {
+      resolution = 'SD';
+    } else {
+      resolution = '720p';
+    }
+
+    console.log(video.height, source);
+
+    if (video.source === 'file-upload' && source === 'file') {
+      // doesn't support different resolutions
+      resolution = 'upload';
+    }
+    return resolution;
+  };
+
   useEffect(() => {
     if (id) {
       const videos = controller.getVideos();
       for (let video of videos) {
         if (video.id === id) {
-          // determine resolution (browser based player will use best video possible)
-          let resolution = '';
-          if (video.height >= 2160) {
-            resolution = '4K';
-          } else if (video.height >= 1440) {
-            resolution = '1440p';
-          } else if (video.height >= 1080) {
-            resolution = '1080p';
-          } else {
-            resolution = '720p';
-          }
-          video.resolution = resolution;
-
           setCurrentVideo(video);
           controller.setCurrentVideo(video);
 
@@ -595,7 +610,7 @@ export default React.memo(function Player({ controller, settings, }) {
         bitrate = (Math.round(currentVideo.tbr * 0.1) * 10) + 'K';
       }
 
-      setVideoInfo(currentVideo.resolution + '/' + currentVideo.fps + '/' + currentVideo.vcodec.toUpperCase() + '/' + bitrate);
+      setVideoInfo(getResolution(currentVideo, 'info') + '/' + currentVideo.fps + '/' + currentVideo.vcodec.toUpperCase() + '/' + bitrate);
 
       // setup windows mediasession
       if ('mediaSession' in navigator) {
@@ -721,10 +736,10 @@ export default React.memo(function Player({ controller, settings, }) {
                 </div>
               </Fade>
               <video key={'video-' + currentVideo.id} ref={videoRef} style={{ width: '100%', height: '100%' }} autoPlay={false} muted={true} poster={controller.getVideoUrl(currentVideo.id + '-' + currentVideo.filename + '.jpg')}>
-                <source src={controller.getVideoUrl(currentVideo.id + '-' + currentVideo.resolution + '-' + currentVideo.filename)}></source>
+                <source src={controller.getVideoUrl(currentVideo.id + '-' + getResolution(currentVideo, 'file') + '-' + currentVideo.filename)}></source>
               </video>
               <audio key={'audio-' + currentVideo.id} ref={audioRef} autoPlay={false}>
-                <source src={controller.getVideoUrl(currentVideo.id + '-' + currentVideo.resolution + '-' + currentVideo.filename)} />
+                <source src={controller.getVideoUrl(currentVideo.id + '-' + getResolution(currentVideo, 'file') + '-' + currentVideo.filename)} />
               </audio>
               <Box onClick={(e) => { e.stopPropagation(); }} sx={{ position: 'absolute', display: 'flex', flexDirection: 'row', alignItems: 'center', width: '100%', pl: 0, pt: 0.5, pb: 0.5, height: '50px', bottom: (showStatus ? 0 : '-65px'), opacity: (showStatus ? 1 : 0), left: 0, textAlign: 'left', backgroundColor: 'rgba(0, 0, 0, 0.6)', transition: 'all 200ms ease-in-out' }}>
                 <Tooltip title="Previous (shift + p)" placement="top" disableInteractive>

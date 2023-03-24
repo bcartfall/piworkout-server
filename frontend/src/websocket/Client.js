@@ -40,6 +40,7 @@ export default class Client {
       }
       try {
         this._ws = new WebSocket((ssl ? 'wss' : 'ws') + '://' + backendHost + '/backend'); // wss://localhost:5000/backend
+        this._ws.binaryType = 'arraybuffer';
       } catch (e) {
         this._initResolve = null;
         reject(e);
@@ -50,6 +51,7 @@ export default class Client {
         this.onClose(event); 
       };
       this._ws.onerror = (event) => { 
+        console.log('onerror', event);
         this._initResolve = null;
         reject(event);
         this.onError(event); 
@@ -57,8 +59,19 @@ export default class Client {
     });
   }
 
-  send(json) {
-    return this._ws.send(JSON.stringify(json));
+  send(data, type) {
+    if (type === 'json') {
+      // json object
+      return this._ws.send(JSON.stringify(data));
+    } else if (type === 'arrayBuffer') {
+      // array buffer
+      //console.log('sending arraybuffer', data);
+      return this._ws.send(data);
+    }
+  }
+
+  getBufferedAmount() {
+    return this._ws.bufferedAmount;
   }
 
   onOpen(event) {
@@ -88,7 +101,7 @@ export default class Client {
   }
 
   onClose(event) {
-    console.log('WebSocket is closed. Reconnect will be attempted in 1 second.', event.reason);
+    console.log('WebSocket is closed. Reconnect will be attempted in 1 second. reason=' + event.reason, 'code=' + event.code);
     this._hasBackendFailure = true;
     this._retryCount++;
 
@@ -118,17 +131,6 @@ export default class Client {
     this._controller.setSettings({ ...json.data.settings });
     this._controller.setVideos([...json.data.videos]);
     this._controller._setLoaded(true);
-
-    // send 'up' to server to get back any queued messages
-    if (this._pingInterval) {
-      clearInterval(this._pingInterval);
-    }
-    setInterval(() => {
-      this.send({
-        'namespace': 'up',
-        'uuid': this._controller.generateUuid(),
-      });
-    }, 1000 / 10);
   }
 
   onSettings(event, json) {
