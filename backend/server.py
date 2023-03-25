@@ -29,8 +29,8 @@ async def receiveJson(event, queue):
     if (not 'namespace' in event):
         logger.debug('namespace not found in message')
         return
-    if (event['namespace'] != 'up'):
-        logger.debug(event)
+    #if (event['namespace'] != 'up'):
+    #    logger.debug(event)
 
     # handle message
     namespace = event['namespace']
