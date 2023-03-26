@@ -183,6 +183,10 @@ export class Controller {
     return this._video;
   }
 
+  getAudio() {
+    return this._audio;
+  }
+
   onKeydown(event) {
     console.log('onKeydown', event);
     if (this._onKeyDown) {
@@ -191,15 +195,19 @@ export class Controller {
   }
 
   syncAudio(action) {
-    let position = this._video.currentTime - (parseInt(this._settings.audioDelay, 10) / 1000);
+    const videoTime = this._video.currentTime;
+    let position = videoTime - (parseInt(this._settings.audioDelay, 10) / 1000);
     if (position > this._audio.duration) {
       position = this._audio.duration;
     }
     if (position < 0) {
       // wait for position to be >= 0
+      const delay = -position * 1000;
       setTimeout(() => {
+
+        console.log('audio needs to be delayed until video has reached delay=', delay)
         this.syncAudio(action);
-      }, -position * 1000);
+      }, delay);
       return false;
     }
 

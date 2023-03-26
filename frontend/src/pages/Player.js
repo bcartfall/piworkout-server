@@ -38,6 +38,7 @@ export default React.memo(function Player({ controller, settings, }) {
   const videoChanging = useRef(false);
   const videoTimeRef = useRef(null);
   const videoListRef = useRef(null);
+  const playTimeRef = useRef(0);
   const lastAction = useRef(new Date().getTime());
   const lastMouseAction = useRef(new Date().getTime());
   const videoClick = useRef({
@@ -171,6 +172,7 @@ export default React.memo(function Player({ controller, settings, }) {
 
   const onPlay = useCallback((e) => {
     controller.syncAudio('play');
+    playTimeRef.current = Date.now();
 
     const currentTime = controller.getCurrentTime();
     const obj = {
@@ -211,11 +213,30 @@ export default React.memo(function Player({ controller, settings, }) {
   }, [videoRef, controller, updateVideoPosition, currentVideo, updateNextSkip,]);
 
   const onProgress = useCallback((e) => {
-    if (controller.getCurrentTime() <= 0 || controller.getVideo().paused || controller.getVideo().ended) {
+    const videoEl = controller.getVideo();
+    const audioEl = controller.getAudio();
+
+    if (controller.getCurrentTime() <= 0 || videoEl.paused || videoEl.ended) {
       return;
     }
 
     const currentTime = controller.getCurrentTime();
+    const diff = (currentTime - audioEl.currentTime);
+    //console.log('video position=', currentTime, 'audio position=', audioEl.currentTime, ', diff=', diff);
+    
+    // for the first n seconds of playback try to match audio delay to the setting by adjusting video playback speed
+    if (playTimeRef.current !== -1 && Date.now() - playTimeRef.current < 5000) {
+      const target = parseInt(controller.getSettings().audioDelay, 10);
+      const normal = (diff * 1000) - target;
+
+      // exponentially adjust video rate between 25% and 400% depending on deviance from 1000ms
+      const playbackRate = Math.pow(Math.min(Math.max(1 - (normal / 1000), 0.5), 2), 2);
+      console.log('audio delay=' + Math.round(diff * 1000), ', target=' + target, ', adjusting playbackRate=' + playbackRate);
+      videoEl.playbackRate = playbackRate;
+    } else {
+      playTimeRef.current = -1;
+      videoEl.playbackRate = 1.0;
+    }
 
     const obj = {
       'namespace': 'player',
@@ -224,6 +245,7 @@ export default React.memo(function Player({ controller, settings, }) {
       'videoId': currentVideo.id,
       'time': currentTime,
     };
+    
     //console.log(obj);
     controller.send(obj);
     updateVideoPosition(currentVideo);
@@ -379,7 +401,7 @@ export default React.memo(function Player({ controller, settings, }) {
       resolution = '720p';
     }
 
-    console.log(video.height, source);
+    //console.log(video.height, source);
 
     if (video.source === 'file-upload' && source === 'file') {
       // doesn't support different resolutions

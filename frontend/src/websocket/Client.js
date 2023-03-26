@@ -82,7 +82,7 @@ export default class Client {
 
   onMessage(event) {
     const json = JSON.parse(event.data);
-    console.log('onmessage', json);
+    //console.log('onmessage', json);
     switch (json.namespace) {
       case 'init': this.onInit(event, json); break
       case 'settings': this.onSettings(event, json); break;
