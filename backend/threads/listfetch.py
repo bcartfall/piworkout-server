@@ -186,8 +186,6 @@ class ListFetchThread:
                 continue
             if (path[-9:] == 'README.md'):
                 continue
-            if (path[-3:] == 'jpg'):
-                continue
 
             # check if file exists in model
             a = path.split('-')
