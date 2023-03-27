@@ -180,6 +180,7 @@ class ListFetchThread:
         logger.info('listfetch.garbageCollect()')
         dir = '/videos/'
         now = time.time()
+        videos = model.video.getItems()
 
         for path in os.listdir(dir):
             if (not os.path.isfile(dir + path)):
@@ -192,7 +193,7 @@ class ListFetchThread:
             l = len(a)
 
             found = False
-            for video in model.video.getItems():
+            for video in videos:
                 if (video.filename == a[l - 1]):
                     # found don't delete
                     found = True
