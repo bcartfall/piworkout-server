@@ -13,10 +13,16 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import eStatus from '../enums/VideoStatus';
 import VideoContextMenu from './VideoContextMenu';
 
+const humanFileSize = (size) => {
+  var i = size === 0 ? 0 : Math.floor(Math.log(size) / Math.log(1024));
+  return (size / Math.pow(1024, i)).toFixed(2) + ' ' + ['B', 'kB', 'MB', 'GB', 'TB'][i];
+};
+
 export default function PiVideo({ video, controller, index, moveVideo, }) {
   const ref = useRef(null);
   const navigate = useNavigate();
   const [contextMenu, setContextMenu] = useState(null);
+  const progressCalc = useRef([]);
 
   const handleContextMenu = (event) => {
     event.preventDefault();
@@ -117,11 +123,37 @@ export default function PiVideo({ video, controller, index, moveVideo, }) {
   }
 
   let progress = 100, color;
+  const now = Date.now();
+  let speedChip = null;
   if (video.progress && video.progress.totalBytes) {
-    // determine progress from how much has donwloaded
+    // determine progress from how much has downloaded
     progress = video.progress.progress * 100; // 0 to 100
     //console.log("downloading progress: " + progress, video.id, video.progress.downloadedBytes, video.progress.totalBytes)
     color = 'secondary';
+
+    // average last 5 seconds of progress.speed
+    if (video.status === eStatus.DOWNLOADING_AUDIO || video.status === eStatus.DOWNLOADING_VIDEO) {
+      progressCalc.current.push([now, video.progress.totalBytes, video.progress.speed]);
+      // clean progress that is too old or wrong totalBytes
+      while (true) {
+        const check = progressCalc.current[0];
+        if (now - check[0] > 5000) {
+          progressCalc.current.shift();
+        } else if (check[1] !== video.progress.totalBytes) {
+          progressCalc.current.shift();
+        } else {
+          break;
+        }
+      }
+
+      // get average
+      const t = progressCalc.current.reduce((accumulator, currentValue) => accumulator + currentValue[2], 0);
+      const avg = t / progressCalc.current.length;
+
+      speedChip = (
+        <Chip label={humanFileSize(avg) + '/s'} variant="outlined" />
+      );
+    }
   } else {
     // determine progress from how much we have watched
     progress = Math.round(video.position / video.duration * 10000) * 0.01;
@@ -162,7 +194,8 @@ export default function PiVideo({ video, controller, index, moveVideo, }) {
                 <Typography component="div" className="title" variant="h6">
                   {video.title}
                 </Typography>
-                <Chip label={status} variant="outlined" />
+                <Chip label={status} variant="filled" />
+                {speedChip && speedChip}
               </CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', pl: 1, pb: 1 }}>
                 <Typography className="description" sx={{ overflow: 'hidden', maxHeight: 76, color: '#aaa' }}>
