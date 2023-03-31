@@ -151,7 +151,7 @@ export default function PiVideo({ video, controller, index, moveVideo, }) {
       const avg = t / progressCalc.current.length;
 
       speedChip = (
-        <Chip label={humanFileSize(avg) + '/s'} variant="outlined" />
+        <Chip label={humanFileSize(avg) + '/s'} variant="outlined" sx={{ml: 2}} />
       );
     }
   } else {

@@ -8,8 +8,6 @@ import asyncio
 import websockets
 import json
 import os
-import threading
-import sys
 from queue import Queue, Empty
 
 import model
@@ -149,7 +147,7 @@ def send(queue, obj):
     global MESSAGE_ID
     MESSAGE_ID += 1
     obj['messageId'] = MESSAGE_ID
-    queue.put(json.dumps(obj))
+    queue.put_nowait(json.dumps(obj))
 
 def broadcast(obj, sender = None):
     """
@@ -161,7 +159,7 @@ def broadcast(obj, sender = None):
     for queue in CLIENTS:
         if (sender == queue):
             continue
-        queue.put(json.dumps(obj))
+        queue.put_nowait(json.dumps(obj))
 
 
 def start():

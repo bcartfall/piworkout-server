@@ -57,59 +57,59 @@ class DownloaderThread:
     def _dlp_progress_hook(self, d):
         previousWeight = self._previousWeight
         weight = self._currentFormat['weight']
+        progress = 0.0
+        totalBytes = 0
         
         # store progress in memory for other calls
-        with model.video.dataMutex():
-            shouldBroadcast = False
-            now = time.time()
-            elapsed = now - self._lastUpdate
-            if (elapsed >= 0.1 and self._step < 1):
-                shouldBroadcast = True
-                
-            #logger.debug('----' + d['status'])
-            if d['status'] == 'finished':
-                shouldBroadcast = True
-                self._totalBytesEstimate = 0
-                self._step += 1
-                if (self._step == 2):
-                    logger.debug('---------- finished audio')
-                    self._currentVideo.status = model.STATUS_ENCODING
-                else:
-                    logger.debug('---------- finished video')
-                    self._currentVideo.status = model.STATUS_DOWNLOADING_AUDIO
-            elif d['status'] == 'downloading':
-                totalBytes = d.get("total_bytes")
-                if (totalBytes == None):
-                    est = int(d.get('total_bytes_estimate') or 0)
-                    if (est > self._totalBytesEstimate):
-                        self._totalBytesEstimate = est
-                    totalBytes = self._totalBytesEstimate
-                logger.debug('---------- progress_hook called threadId=' + str(threading.get_native_id()) + ', ' + str(d.get('downloaded_bytes')) + '/' + str(totalBytes) + ', status=' + d['status'] + 
-                    ', filename=' + d['filename'] + ', weight=' + str(weight) + ', previousWeight=' + str(previousWeight) + ', speed=' + str(d.get('speed')))
-                
-                # determine progress
-                self._currentVideo.status = model.STATUS_DOWNLOADING_VIDEO
-                
+        shouldBroadcast = False
+        now = time.time()
+        elapsed = now - self._lastUpdate
+        if (elapsed >= 0.1 and self._step < 1):
+            shouldBroadcast = True
+            
+        #logger.debug('----' + d['status'])
+        if d['status'] == 'finished':
+            shouldBroadcast = True
+            self._totalBytesEstimate = 0
+            self._step += 1
+            if (self._step == 2):
+                logger.debug('---------- finished audio')
+                self._currentVideo.status = model.STATUS_ENCODING # atomic
+            else:
+                logger.debug('---------- finished video')
+                self._currentVideo.status = model.STATUS_DOWNLOADING_AUDIO # atomic
+        elif d['status'] == 'downloading':
+            totalBytes = d.get("total_bytes")
+            if (totalBytes == None):
+                est = int(d.get('total_bytes_estimate') or 0)
+                if (est > self._totalBytesEstimate):
+                    self._totalBytesEstimate = est
+                totalBytes = self._totalBytesEstimate
+            # determine progress
+            self._currentVideo.status = model.STATUS_DOWNLOADING_VIDEO # atomic
+
+        # send update
+        if (shouldBroadcast):
+            with model.video.dataMutex():
                 self._currentVideo.progress.downloadedBytes = d.get('downloaded_bytes')
                 self._currentVideo.progress.totalBytes = totalBytes
                 if (totalBytes > 0):
                     progress = previousWeight + (d.get('downloaded_bytes') / totalBytes * weight)
-                    logger.debug('-- progress=' + str(progress))
+                    #logger.debug('-- progress=' + str(progress))
                     self._currentVideo.progress.progress = progress
                 self._currentVideo.progress.eta = d.get('eta')
                 self._currentVideo.progress.speed = d.get('speed')
                 self._currentVideo.progress.elapsed = d.get('elapsed')
-                #logger.debug(self._currentVideo.progress)
-
-            # send update
-            if (shouldBroadcast):
-                # 10 updates per second
-                self._lastUpdate = now
-                server.broadcast({
-                    'namespace': 'videos',
-                    'video': self._currentVideo.toObject(),
-                    'source': 'progressHook',
-                })
+                videoObject = self._currentVideo.toObject()
+            
+            logger.debug('---------- progress_hook called threadId=' + str(threading.get_native_id()) + ', progress=' + ("{:.4f}".format(progress)) + ', ' + str(d.get('downloaded_bytes')) + '/' + str(totalBytes) + ', status=' + d['status'] + ', filename=' + d['filename'] + ', weight=' + str(weight) + ', previousWeight=' + str(previousWeight) + ', speed=' + str(d.get('speed')))
+            # n updates per second
+            self._lastUpdate = now
+            server.broadcast({
+                'namespace': 'videos',
+                'video': videoObject,
+                'source': 'progressHook',
+            })
 
     def _download(self):
         # this will keep the thread busy until the video is downloaded
