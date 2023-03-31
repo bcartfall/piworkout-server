@@ -87,7 +87,7 @@ async def consumer_handler(websocket, queue):
             elif (binaryMessage):
                 await receiveBinary(binaryMessage, queue)
                 
-            await asyncio.sleep(0)  # yield control to the event loop
+            await asyncio.sleep(0.04)  # yield control to the event loop
     except websockets.exceptions.ConnectionClosed:
         logger.debug('  client disconnected early')
 
@@ -102,7 +102,7 @@ async def producer_handler(websocket, queue):
                 await websocket.send(message)
                 queue.task_done()
             except Empty:
-                await asyncio.sleep(0)  # yield control to the event loop
+                await asyncio.sleep(0.04)  # yield control to the event loop (tickrate 25fps)
     except websockets.exceptions.ConnectionClosed:
         logger.warning('Connecting closed while attempting to send.')
 
