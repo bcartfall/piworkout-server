@@ -187,15 +187,16 @@ class ListFetchThread:
                 continue
             if (path[-9:] == 'README.md'):
                 continue
+            #logger.debug(f'Checking {path}.')
 
             # check if file exists in model
             a = path.split('-')
-            l = len(a)
 
             found = False
             for video in videos:
-                if (video.filename == a[l - 1]):
+                if (str(video.id) == a[0]):
                     # found don't delete
+                    #logger.debug(f'Found video.id {video.id}. Keeping {path}.')
                     found = True
                     break
             if (found):
