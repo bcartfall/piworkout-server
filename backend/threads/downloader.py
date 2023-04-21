@@ -241,6 +241,12 @@ class DownloaderThread:
                 # mark video as completed
                 logger.info('------------------------------- completed')
                 
+            model.log.create({
+                'video_id': id,
+                'action': 'onDownloaded',
+                'data': str(id) + '-' + format['name'] + '-' + filename
+            })
+                
             # set time of file to now
             now = time.time()
             fullFile = '/videos/' + str(id) + '-' + format['name'] + '-' + filename

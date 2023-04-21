@@ -12,7 +12,7 @@ from queue import Queue, Empty
 
 import model
 
-from namespaces import settings, connect, videos, player, ping, file_upload
+from namespaces import settings, connect, videos, player, logs, ping, file_upload
 
 import logging
 logger = logging.getLogger('piworkout-server')
@@ -43,6 +43,8 @@ async def receiveJson(event, queue):
             videos.receive(event, queue)
         case 'player':
             player.receive(event, queue)
+        case 'logs':
+            logs.receive(event, queue)
         case 'ping':
             ping.receive(event, queue)
         case _:

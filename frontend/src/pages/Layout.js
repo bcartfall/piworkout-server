@@ -4,7 +4,7 @@
  * See README.md
  */
 
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Outlet, Link } from "react-router-dom";
 
 import { AppBar, Toolbar, Typography, useScrollTrigger, Box, Fab, Fade, IconButton, Snackbar, Button, Dialog, DialogTitle, DialogContent, DialogContentText, TextField, DialogActions, } from '@mui/material';
@@ -13,6 +13,8 @@ import LiveTvIcon from '@mui/icons-material/LiveTv';
 import SettingsIcon from '@mui/icons-material/Settings';
 import ReplayIcon from '@mui/icons-material/Replay';
 import AddLinkIcon from '@mui/icons-material/AddLink';
+
+import LogDialog from '../components/LogDialog';
 
 function ScrollTop(props) {
   const { children, window } = props;
@@ -53,6 +55,12 @@ function ScrollTop(props) {
 export default function Layout(props) {
   const { layout, controller } = props;
   const { snack } = layout;
+
+  const closeLog = useCallback(() => {
+    let nLayout = {...layout};
+    nLayout.logDialog.open = false;
+    controller.setLayout(nLayout);
+  }, [controller, layout,]);
 
   const closeSnack = (event, reason) => {
     if (reason === 'clickaway') {
@@ -146,10 +154,10 @@ export default function Layout(props) {
           </Typography>
           <Box sx={{ flexGrow: 0 }}>
             {addUrlDialog !== null && addUrlDialog}
-            <Button variant="outlined" size="small" onClick={onAddUrl}>
+            <IconButton sx={{ mr: 1 }} onClick={onAddUrl}>
               <AddLinkIcon />
-            </Button>
-            <IconButton sx={{ mr: 2 }} onClick={refresh}>
+            </IconButton>
+            <IconButton sx={{ mr: 1 }} onClick={refresh}>
               <ReplayIcon />
             </IconButton>
             <Link to="/settings" className="link">
@@ -176,6 +184,7 @@ export default function Layout(props) {
         action={snack.action}
         key="snackbar-top-right"
       />
+      <LogDialog controller={controller} open={layout.logDialog.open} video={layout.logDialog.video} onClose={closeLog} />
     </>
   );
 };

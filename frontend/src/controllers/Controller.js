@@ -137,6 +137,14 @@ export class Controller {
     this._setLayout(newLayout);
   }
 
+  logDialog(video) {
+    // open log dialog
+    let newLayout = {...this._layout};
+    newLayout.logDialog = {...newLayout.logDialog, open: true, video,};
+
+    this.setLayout(newLayout);
+  }
+
   getClient() {
     return this._client;
   }

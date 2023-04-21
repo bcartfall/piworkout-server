@@ -38,6 +38,7 @@ const darkTheme = createTheme({
 export default function App(props) {
   const [layout, setLayout] = useState({
     snack: { ...defaultSnack },
+    logDialog: {open: false, video: null},
     title: '',
   });
 

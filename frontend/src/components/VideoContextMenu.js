@@ -6,9 +6,11 @@
 
 import React, { useCallback, } from 'react';
 
-import { Menu, MenuItem, ListItemIcon, ListItemText, Button, } from '@mui/material';
+import { Menu, MenuItem, ListItemIcon, ListItemText, Button, Divider, } from '@mui/material';
 import PlaylistRemoveIcon from '@mui/icons-material/PlaylistRemove';
 import RestoreIcon from '@mui/icons-material/Restore';
+import LinkIcon from '@mui/icons-material/Link';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
 
 export default function VideoContextMenu({ video, controller, contextMenu, onClose, updateVideos, }) {
   const [videos, setVideos] = controller.videosUseState();
@@ -64,6 +66,32 @@ export default function VideoContextMenu({ video, controller, contextMenu, onClo
     return onClose();
   }, [video, onClose, videos, setVideos, controller, updateVideos, ]);
 
+  const actionCopyUrl = useCallback(() => {
+    navigator.clipboard.writeText(video.url);
+
+    controller.snack({
+      message: 'Video URL copied to clipboard.',
+    });
+
+    return onClose();
+  }, [video, onClose, controller, ]);
+
+  const actionCopyUrlAtTime = useCallback(() => {
+    navigator.clipboard.writeText(video.url + (video.url.includes('?') ? '&' : '?') + 't=' + Math.round(video.position));
+
+    controller.snack({
+      message: 'Video URL copied to clipboard.',
+    });
+
+    return onClose();
+  }, [video, onClose, controller, ]);
+
+  const actionShowLog = useCallback(() => {
+    controller.logDialog(video);
+
+    return onClose();
+  }, [video, onClose, controller, ]);
+
   return (
     <Menu open={contextMenu !== null} onClose={onClose} anchorReference="anchorPosition" anchorPosition={contextMenu !== null ? {top: contextMenu.mouseY, left: contextMenu.mouseX} : undefined}>
       <MenuItem onClick={actionRemove}>
@@ -72,6 +100,26 @@ export default function VideoContextMenu({ video, controller, contextMenu, onClo
         </ListItemIcon>
         <ListItemText>Remove Video from Playlist</ListItemText>
       </MenuItem>
+      <Divider />
+      <MenuItem onClick={actionCopyUrlAtTime}>
+          <ListItemIcon>
+            <LinkIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Copy Video URL at Current Time</ListItemText>
+        </MenuItem>
+        <MenuItem onClick={actionCopyUrl}>
+          <ListItemIcon>
+            <LinkIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Copy Video URL</ListItemText>
+        </MenuItem>
+        <Divider />
+        <MenuItem onClick={actionShowLog}>
+          <ListItemIcon>
+            <AccessTimeIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Show Log</ListItemText>
+        </MenuItem>
     </Menu>
   )
 };

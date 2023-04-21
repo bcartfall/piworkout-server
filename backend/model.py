@@ -45,6 +45,7 @@ with mutex:
         db.execute('DROP TABLE videos')
     db.execute('CREATE TABLE IF NOT EXISTS videos (id INTEGER PRIMARY KEY, `order` INT, videoId VARCHAR(255), source VARCHAR(255), url VARCHAR(255), filename VARCHAR(255), filesize INT, title VARCHAR(255), description TEXT, duration INT, position FLOAT, width INT, height INT, tbr INT, fps INT, vcodec VARCHAR(255), status INT, watchedUrl TEXT)')
     db.execute('CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY, name VARCHAR(255), value TEXT)')
+    db.execute('CREATE TABLE IF NOT EXISTS logs (id INTEGER PRIMARY KEY, video_id INTEGER, action VARCHAR(255), data TEXT, created_at INT)')
     db.commit()
     
 """
@@ -330,6 +331,14 @@ class VideoModel:
 
         with self._mutex:
             cursor = self._db.cursor()
+            # get video id so we can delete logs
+            cursor.execute('SELECT id FROM videos WHERE videoId = ?', (video.videoId,))
+            id = cursor.fetchone()
+            if id is not None:
+                # delete logs
+                cursor.execute('DELETE FROM logs WHERE video_id = ?', (id[0],))
+            
+            # delete video record
             cursor.execute('DELETE FROM videos WHERE videoId = ?', (video.videoId,))
             self._db.commit()
 
@@ -521,6 +530,13 @@ class VideoModel:
         sharedObject['change'] = True
         self.insert(video=video)
         self.save(video = video, lock = False)
+        
+        # log added
+        log.create({
+            'video_id': video.id,
+            'action': 'onAdded',
+            'data': url,
+        })
 
         # save video thumbnail
         path = '/videos/' + str(video.id) + '-' + video.filename + '.jpg'
@@ -614,3 +630,36 @@ class VideoModel:
         logger.info('done fetch')
 
 video = VideoModel(db, mutex, settings)
+
+
+class LogModel:
+    def __init__(self, db, mutex, settings):
+        self._db = db
+        self._mutex = mutex
+        self._settings = settings
+        
+    def create(self, obj):
+        with self._mutex:
+            cursor = self._db.cursor()
+            cursor.execute('INSERT INTO logs (video_id, action, data, created_at) VALUES (?, ?, ?, ?)', (obj['video_id'], obj['action'], obj['data'], int(time.time()),))
+            id = cursor.lastrowid
+            logger.debug('Inserted log into DB id=' + str(obj['video_id']))
+            self._db.commit()
+            
+    def getItems(self, videoId):
+        items = []
+        with self._mutex:
+            cursor = self._db.cursor()
+            cursor.execute('SELECT id, video_id, action, data, created_at FROM logs WHERE video_id = ? ORDER BY created_at', (videoId,))
+            rows = cursor.fetchall()
+            for row in rows:
+                items.append({
+                    'id': int(row[0] or 0),
+                    'video_id': int(row[1] or 0),
+                    'action': row[2],
+                    'data': row[3],
+                    'created_at': int(row[4] or 0),
+                })
+        return items
+        
+log = LogModel(db, mutex, settings)

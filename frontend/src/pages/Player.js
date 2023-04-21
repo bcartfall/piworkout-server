@@ -186,6 +186,14 @@ export default React.memo(function Player({ controller, settings, }) {
     controller.send(obj);
 
     handleStatus('play');
+
+    // send log
+    controller.send({
+      namespace: 'logs',
+      action: 'onPlay',
+      videoId: currentVideo ? currentVideo.id : 0,
+      data: controller.getCurrentTime(),
+    });
     
     // determine next segement to skip
     updateNextSkip('play', currentTime);
@@ -281,6 +289,14 @@ export default React.memo(function Player({ controller, settings, }) {
     if (currentVideo) {
       updateVideoPosition(currentVideo);
     }
+    
+    // send log
+    controller.send({
+      namespace: 'logs',
+      action: 'onPause',
+      videoId: currentVideo ? currentVideo.id : 0,
+      data: controller.getCurrentTime(),
+    });
 
     handleStatus('pause');
     return promise;
