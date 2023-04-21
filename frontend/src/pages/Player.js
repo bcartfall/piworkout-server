@@ -23,6 +23,7 @@ import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
 import defaultChannelImage from '../assets/images/youtube.svg';
 import eStatus from '../enums/VideoStatus';
 import { SPONSORBLOCK_SKIP_CATEGORIES } from '../enums/SponsorBlock'
+import VideoContextMenu from '../components/VideoContextMenu';
 
 export default React.memo(function Player({ controller, settings, }) {
   const navigate = useNavigate();
@@ -56,6 +57,7 @@ export default React.memo(function Player({ controller, settings, }) {
   const [showCursor, setShowCursor] = useState(true);
   const [videoInfo, setVideoInfo] = useState('');
   const [showSponsorSkipped, setShowSponsorSkipped] = useState(false);
+  const [contextMenu, setContextMenu] = useState(null);
 
   let { id } = useParams(); // get id from url (e.g. /player/:id)
   id = Math.trunc(id);
@@ -749,12 +751,33 @@ export default React.memo(function Player({ controller, settings, }) {
     controller.send(obj);
   };
 
+  const handleContextMenu = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    setContextMenu(
+      contextMenu === null
+        ? {
+            mouseX: event.clientX + 2,
+            mouseY: event.clientY - 6,
+          }
+        : // repeated contextmenu when it is already open closes it with Chrome 84 on Ubuntu
+          // Other native context menus might behave different.
+          // With this behavior we prevent contextmenu from the backdrop to re-locale existing context menus.
+          null,
+    );
+  };
+
+  const handleContextClose = () => {
+    setContextMenu(null);
+  };
+
   if (!currentVideo) {
     return <div>Loading...</div>;
   }
 
   return (
-    <div key={'player-page'} className="page page-video">
+    <div key={'player-page'} className="page page-video" onContextMenu={handleContextMenu}>
       <Grid container spacing={2}>
         <Grid item sm={8}>
           <Box ref={playerRef} key="player" sx={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'scale-down', overflow: 'hidden', cursor: (showCursor ? 'default' : 'none') }} onClick={onClickPlayer} onMouseMove={() => { handleStatus('mousemove'); }}>
@@ -860,6 +883,7 @@ export default React.memo(function Player({ controller, settings, }) {
           <VideoList key="videolist" ref={videoListRef} controller={controller} currentVideo={currentVideo} playVideo={playVideo} />
         </Grid>
       </Grid>
+      <VideoContextMenu source="player" video={currentVideo} controller={controller} contextMenu={contextMenu} onClose={handleContextClose} />
     </div>
   );
 });

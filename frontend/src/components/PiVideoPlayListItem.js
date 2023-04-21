@@ -15,6 +15,8 @@ export default function PiVideoPlayListItem({ video, controller, index, active, 
 
   const handleContextMenu = (event) => {
     event.preventDefault();
+    event.stopPropagation();
+    
     setContextMenu(
       contextMenu === null
         ? {
@@ -97,7 +99,7 @@ export default function PiVideoPlayListItem({ video, controller, index, active, 
           </Card>
         </Grow>
       </div>
-      <VideoContextMenu video={video} controller={controller} updateVideos={updateVideos} contextMenu={contextMenu} onClose={handleContextClose} />
+      <VideoContextMenu source="pivideoplaylistitem" video={video} controller={controller} updateVideos={updateVideos} contextMenu={contextMenu} onClose={handleContextClose} />
     </div>
   );
 }

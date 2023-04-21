@@ -12,7 +12,7 @@ import RestoreIcon from '@mui/icons-material/Restore';
 import LinkIcon from '@mui/icons-material/Link';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 
-export default function VideoContextMenu({ video, controller, contextMenu, onClose, updateVideos, }) {
+export default function VideoContextMenu({ source, video, controller, contextMenu, onClose, updateVideos, }) {
   const [videos, setVideos] = controller.videosUseState();
 
   const actionRemove = useCallback(() => {
@@ -94,13 +94,17 @@ export default function VideoContextMenu({ video, controller, contextMenu, onClo
 
   return (
     <Menu open={contextMenu !== null} onClose={onClose} anchorReference="anchorPosition" anchorPosition={contextMenu !== null ? {top: contextMenu.mouseY, left: contextMenu.mouseX} : undefined}>
-      <MenuItem onClick={actionRemove}>
-        <ListItemIcon>
-          <PlaylistRemoveIcon fontSize="small" />
-        </ListItemIcon>
-        <ListItemText>Remove Video from Playlist</ListItemText>
-      </MenuItem>
-      <Divider />
+      {source !== 'player' && (
+        <div>
+          <MenuItem onClick={actionRemove}>
+            <ListItemIcon>
+              <PlaylistRemoveIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Remove Video from Playlist</ListItemText>
+          </MenuItem>
+          <Divider />
+        </div>
+      )}
       <MenuItem onClick={actionCopyUrlAtTime}>
           <ListItemIcon>
             <LinkIcon fontSize="small" />
