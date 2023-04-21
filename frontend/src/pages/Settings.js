@@ -34,6 +34,7 @@ export default function Settings(props) {
   };
 
   const onSubmit = () => {
+    console.log('onSubmit');
     if (!hasBackendFailure) {
       // send to server
       controller.send({
@@ -68,7 +69,6 @@ export default function Settings(props) {
         return;
       }
     }
-    
 
     controller.snack({
       message: 'Settings updated.',
@@ -117,7 +117,7 @@ export default function Settings(props) {
                 <FormControlLabel control={<Checkbox checked={ssl} onChange={(event) => {setSsl(event.target.checked);}} />} label="SSL" />
               </Grid>
             </Grid>
-            <Button variant="contained" sx={{ mt: 2 }} fullWidth onClick={onSubmit}><SaveIcon sx={{ mr: 0.5 }} /> Save Settings</Button>
+            <Button type="submit" variant="contained" sx={{ mt: 2 }} fullWidth onClick={onSubmit}><SaveIcon sx={{ mr: 0.5 }} /> Save Settings</Button>
           </form>
         </div>
       </Grow>
@@ -204,7 +204,7 @@ export default function Settings(props) {
               <a href="https://github.com/dandv/convert-chrome-cookies-to-netscape-format" target="_blank" rel="noreferrer">How To Copy Cookies</a> | <a href="https://youtube.com" target="_blank" rel="noreferrer">YouTube</a>
             </Grid>
           </Grid>
-          <Button variant="contained" sx={{ mt: 2 }} fullWidth onClick={onSubmit}><SaveIcon sx={{ mr: 0.5 }} /> Save Settings</Button>
+          <Button type="submit" variant="contained" sx={{ mt: 2 }} fullWidth onClick={onSubmit}><SaveIcon sx={{ mr: 0.5 }} /> Save Settings</Button>
         </form>
       </div>
     </Grow>
