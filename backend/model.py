@@ -650,7 +650,7 @@ class LogModel:
         items = []
         with self._mutex:
             cursor = self._db.cursor()
-            cursor.execute('SELECT id, video_id, action, data, created_at FROM logs WHERE video_id = ? ORDER BY created_at', (videoId,))
+            cursor.execute('SELECT id, video_id, action, data, created_at FROM logs WHERE video_id = ? ORDER BY created_at DESC', (videoId,))
             rows = cursor.fetchall()
             for row in rows:
                 items.append({
