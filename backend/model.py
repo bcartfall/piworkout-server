@@ -323,7 +323,11 @@ class VideoModel:
         if (lock):
             self._dataMutex.acquire()
         logger.debug('model.video().remove() removing id=' + str(video.id) + ', videoId=' + video.videoId)
-        self._items.remove(video)
+        try:
+            self._items.remove(video)
+        except:
+            pass
+            
         for t in self._items:
             logger.debug('  id=' + str(t.id) + ', videoId=' + t.videoId)
 
@@ -363,6 +367,12 @@ class VideoModel:
         self._items = items
         if (lock):
             self._dataMutex.release()
+            
+    def debugItems(self):
+        print('DEBUG printing all videos in memory')
+        items = self.getItems(lock=False)
+        for item in items:
+            print('DEBUG', f'id={item.id}, url={item.url}')
 
     def byVideoId(self, videoId: str, lock: bool = True):
         """

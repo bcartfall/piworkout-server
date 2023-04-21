@@ -221,7 +221,6 @@ def add(event, queue):
                 elif (nVideo.id == video.id): 
                     continue
                 
-                nVideos.append(video)
                 if (video.order != index):
                     video.order = index
                     model.video.save(video, lock=False)
