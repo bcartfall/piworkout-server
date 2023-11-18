@@ -25,7 +25,7 @@ logger = logging.getLogger('piworkout-server')
 fp = None
 cUuid = ''
 
-def receive(message, queue):
+def binaryReceive(message, queue):
     """
     Handle file uploads from desktop client
     """

@@ -57,7 +57,9 @@ def changeOrder(event, queue):
         oVideos = model.video.getItems(lock=False)
         nVideos = oVideos.copy()
         fromVideo = model.video.byId(event['id'], lock=False)
+        logger.debug('  fromVideo id=' + str(fromVideo.id) + ', order=' + str(fromVideo.order))
         toVideo = nVideos[event['index']]
+        logger.debug('  toVideo id=' + str(toVideo.id) + ', order=' + str(toVideo.order))
         
         fromIndex = fromVideo.order
         toIndex = toVideo.order
@@ -148,6 +150,16 @@ def remove(event, queue):
                 break
         model.video.remove(removeVideo, lock=False)
         
+        # update order of remaining videos
+        videos = model.video.getItems(lock=False)
+        index = 0
+        for video in videos:
+            if (video.order != index):
+                logger.debug('  updating video id=' + str(video.id) + ', order to ' + str(index))
+                video.order = index
+                model.video.save(video, lock=False)
+            index += 1
+        
     # update (all) clients
     broadcast()
 
@@ -207,30 +219,31 @@ def add(event, queue):
             return None
             
         # update DB and memory
+        
+        # add video to top of list
         with model.video.dataMutex():
-            index = 0
+            index = 1
             videos = model.video.getItems(lock=False)
             nVideos = []
             
+            # add new video to top
+            nVideo.order = 0
+            nVideos.append(nVideo)
+            
+            # fill remaining (removing nVideo)
             for video in videos:
-                if (index == position):
-                    nVideo.order = index
-                    nVideos.append(nVideo)
-                    model.video.save(nVideo, lock=False)
-                    index += 1
-                elif (nVideo.id == video.id): 
+                if (nVideo.id == video.id):
                     continue
                 
-                if (video.order != index):
-                    video.order = index
-                    model.video.save(video, lock=False)
+                video.order = index
+                model.video.save(nVideo, lock=False)
                 index += 1
+                nVideos.append(video)
             
             model.video.setItems(nVideos, lock=False)
             
         # update list of videos
         broadcast()
-        
     else:
         logger.error('Video source not handled.')
 

@@ -12,7 +12,7 @@ from queue import Queue, Empty
 
 import model
 
-from namespaces import settings, connect, videos, player, logs, ping, file_upload
+from namespaces import settings, connect, videos, player, logs, routines, ping, file_upload, exercises
 
 import logging
 logger = logging.getLogger('piworkout-server')
@@ -43,6 +43,8 @@ async def receiveJson(event, queue):
             videos.receive(event, queue)
         case 'player':
             player.receive(event, queue)
+        case 'routines':
+            routines.receive(event, queue)
         case 'logs':
             logs.receive(event, queue)
         case 'ping':
@@ -62,7 +64,9 @@ async def receiveBinary(binaryMessage, queue):
     namespace = binaryMessage[16:44].decode('ascii').rstrip('\x00')
     match namespace:
         case 'file-upload':
-            file_upload.receive(binaryMessage, queue)
+            file_upload.binaryReceive(binaryMessage, queue)
+        case 'exercises':
+            exercises.binaryReceive(binaryMessage, queue)
         case _:
             logger.warning(f'  binary namespace {namespace} not handled.')
 
@@ -122,6 +126,7 @@ async def handler(websocket):
                 'connected': model.settings.get('youtubeApiToken', '') != '',
                 'videos': videos.data(),
                 'player': player.data(),
+                'routines': routines.data(),
             },
         }
 

@@ -50,6 +50,7 @@ class ListFetchThread:
                     logger.error('Error Retry: ' + str(re))
                 except Exception as e:
                     logger.error('Error exception: ' + str(e))
+                    print(traceback.format_exc())
                     
             # determine if there is a video to mark watched in queue
             video = None

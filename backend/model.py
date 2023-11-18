@@ -34,18 +34,30 @@ STATUS_ENCODING = 4
 STATUS_COMPLETE = 5
 STATUS_DELETED = 6
 
-db = sqlite3.connect('./db/database.sqlite3', check_same_thread=False) 
+db = sqlite3.connect('./db/database.sqlite3', check_same_thread=False)
+
+def dict_factory(cursor, row):
+    d = {}
+    for idx, col in enumerate(cursor.description):
+        d[col[0]] = row[idx]
+    return d
+
+db.row_factory = dict_factory
+
 mutex = threading.Lock() # DB mutex
 
 DEBUG = False # default False # set debug to true to delete the DB and redownload every video from the playlist
 
 # initialize database
 with mutex:
+    #db.execute('DROP TABLE routines')
     if (DEBUG):
         db.execute('DROP TABLE videos')
     db.execute('CREATE TABLE IF NOT EXISTS videos (id INTEGER PRIMARY KEY, `order` INT, videoId VARCHAR(255), source VARCHAR(255), url VARCHAR(255), filename VARCHAR(255), filesize INT, title VARCHAR(255), description TEXT, duration INT, position FLOAT, width INT, height INT, tbr INT, fps INT, vcodec VARCHAR(255), status INT, watchedUrl TEXT)')
     db.execute('CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY, name VARCHAR(255), value TEXT)')
     db.execute('CREATE TABLE IF NOT EXISTS logs (id INTEGER PRIMARY KEY, video_id INTEGER, action VARCHAR(255), data TEXT, created_at INT)')
+    db.execute('CREATE TABLE IF NOT EXISTS routines (id INTEGER PRIMARY KEY, `order` INTEGER, name VARCHAR(255), description TEXT)')
+    db.execute('CREATE TABLE IF NOT EXISTS exercises (id INTEGER PRIMARY KEY, routineId INTEGER, `order` INT, name VARCHAR(255), tooltip TEXT, image VARCHAR(255), description TEXT, video_url TEXT)')
     db.commit()
     
 """
@@ -84,7 +96,7 @@ class SettingsModel:
             rows = cursor.fetchall()
         with (self._dataMutex):
             for row in rows:
-                self._data[row[0]] = row[1]
+                self._data[row['name']] = row['value']
                 
         # init: load cookie file (if exists)
         if (self.get('youtubeCookie', '') != ''):
@@ -121,7 +133,7 @@ class SettingsModel:
             if (settingId == None):
                 cursor.execute('INSERT INTO settings (name, value) VALUES (?, ?)', (name, value,))
             else:
-                cursor.execute('UPDATE settings SET value = ? WHERE id = ?', (value, settingId[0],))
+                cursor.execute('UPDATE settings SET value = ? WHERE id = ?', (value, settingId['id'],))
             self._db.commit()
             return value
 
@@ -134,6 +146,233 @@ class SettingsModel:
             self._db.commit()
 
 settings = SettingsModel(db, mutex)
+
+# routines
+@dataclass
+class Exercise:
+    id: int = 0
+    rotuineId: int = 0,
+    order: int = 0
+    name: str = ''
+    tooltip: str = ''
+    image: str = ''
+    description: str = ''
+    video_url: str = ''
+    
+    def toObject(self):
+        return {
+            'id': int(self.id),
+            'rotuineId': int(self.rotuineId),
+            'order': int(self.order),
+            'name': str(self.name),
+            'tooltip': str(self.name),
+            'image': str(self.name),
+            'description': str(self.name),
+            'video_url': str(self.name),
+        }
+
+@dataclass
+class Routine:
+    id: int = 0
+    order: int = 0
+    name: str = ''
+    description: str = ''
+    exercises: list[Exercise] = None
+    
+    def toObject(self):
+        a = []
+        for item in self.exercises:
+            a.append(item.toObject())
+        
+        return {
+            'id': int(self.id),
+            'order': int(self.order),
+            'name': str(self.name),
+            'description': str(self.name),
+            'exercises': a,
+        }
+        
+class RoutineModel:
+    _items = []
+    _dataMutex = threading.Lock()
+
+    def __init__(self, db, mutex, settings):
+        self._db = db
+        self._mutex = mutex
+        self._settings = settings
+
+        # load routines and exercises into memory
+        with self._mutex:
+            cursor = self._db.cursor()
+            cursor.execute('SELECT id, `order`, name, description FROM routines ORDER BY `order`')
+            rows = cursor.fetchall()
+        with self._dataMutex:
+            for row in rows:
+                routine = Routine(
+                    id=int(row['id'] or 0),
+                    order=int(row['order'] or 0),
+                    name=row['name'],
+                    description=row['description'],
+                    exercises=[],
+                )
+                self._items.append(routine)
+                
+            with self._mutex:
+                rows2 = cursor.execute('SELECT id, `order`, name, tooltip, image, description, video_url FROM exercises ORDER BY `order`')
+            for row in rows2:
+                exercise = Exercise(
+                    id=int(row['id'] or 0),
+                    order=int(row['order'] or 0),
+                    name=row['name'],
+                    tooltip=row['tooltip'],
+                    image=row['image'],
+                    description=row['description'],
+                    video_url=row['video_url']
+                )
+                routine.exercises.append(exercise)
+            rows = cursor.fetchall()
+
+    def data(self, copy:bool = True, lock:bool = True):
+        if (lock):
+            self._dataMutex.acquire()
+        if (copy):
+            res = self._items.copy()
+        else:
+            res = self._items
+        if (lock):
+            self._dataMutex.release()
+        return res
+
+    def dataMutex(self):
+        return self._dataMutex
+    
+    def insert(self, routine: Routine):
+        with self._mutex:
+            # save to DB (if not exists)
+            cursor = self._db.cursor()
+            cursor.execute('INSERT INTO routines (name) VALUES ("")')
+            routine.id = cursor.lastrowid
+            logger.debug('Inserted routine into DB id=' + str(routine.id))
+            self._db.commit()
+            self._items.append(routine)
+            
+    def insertExercise(self, routine: Routine, exercise: Exercise):
+        with self._mutex:
+            # save to DB (if not exists)
+            cursor = self._db.cursor()
+            cursor.execute('INSERT INTO exercises (rotuineId) VALUES (?)', (routine.id,))
+            exercise.id = cursor.lastrowid
+            logger.debug('Inserted exercise into DB id=' + str(exercise.id))
+            routine.exercises.append(exercise)
+            self._db.commit()
+
+    def save(self, routine: Routine, lock: bool = True):
+        """
+        Save routine data to database
+        """
+        if (lock):
+            self._dataMutex.acquire()
+        with self._mutex:
+            cursor = self._db.cursor()
+            cursor.execute('UPDATE routines SET `order` = ?, name = ?, description = ? WHERE id = ?', (routine.order, routine.name, routine.description, routine.id,))
+            self._db.commit()
+        if (lock):
+            self._dataMutex.release()
+            
+    def saveExercise(self, routine: Routine, exercise: Exercise, lock: bool = True):
+        """
+        Save exercise data to database
+        """
+        if (lock):
+            self._dataMutex.acquire()
+        with self._mutex:
+            cursor = self._db.cursor()
+            cursor.execute('UPDATE exercises SET routineId = ?, `order` = ?, name = ?, tooltip = ?, image = ?, description = ?, video_url = ? WHERE id = ?', (exercise.routineId, exercise.order, exercise.name, exercise.tooltip, exercise.image, exercise.description, exercise.video_url, exercise.id,))
+            self._db.commit()
+        if (lock):
+            self._dataMutex.release()
+
+    def remove(self, routine: Routine, lock: bool = True):
+        if (lock):
+            self._dataMutex.acquire()
+        logger.debug('model.routine().remove() removing id=' + str(routine.id))
+        try:
+            self._items.remove(routine)
+        except:
+            pass
+            
+        for t in self._items:
+            logger.debug('  id=' + str(t.id))
+
+        with self._mutex:
+            cursor = self._db.cursor()
+            # delete routine and exercises records
+            cursor.execute('DELETE FROM exercises WHERE routineId = ?', (routine.id,))
+            cursor.execute('DELETE FROM routines WHERE id = ?', (routine.id,))
+            self._db.commit()
+
+        if (lock):
+            self._dataMutex.release()
+
+    def removeExercise(self, routine: Routine, exercise: Exercise, lock: bool = True):
+        if (lock):
+            self._dataMutex.acquire()
+        logger.debug('model.routine().removeExercise() removing id=' + str(exercise.id))
+        try:
+            routine.remove(exercise)
+        except:
+            pass
+            
+        with self._mutex:
+            cursor = self._db.cursor()
+            # delete exercise record
+            cursor.execute('DELETE FROM exercises WHERE id = ?', (exercise.id,))
+            self._db.commit()
+
+        if (lock):
+            self._dataMutex.release()
+
+    def getItems(self, lock: bool = True):
+        if (lock):
+            self._dataMutex.acquire()
+        items = self._items.copy()
+        if (lock):
+            self._dataMutex.release()
+        return items
+    
+    def setItems(self, items, lock: bool = True):
+        """
+        Update list of videos
+        """
+        if (lock):
+            self._dataMutex.acquire()
+        self._items = items
+        if (lock):
+            self._dataMutex.release()
+            
+    def debugItems(self):
+        print('DEBUG printing all routines in memory')
+        items = self.getItems(lock=False)
+        for item in items:
+            print('DEBUG', f'id={item.id}, url={item.name}')
+
+    def byId(self, id: int, lock: bool = True):
+        """
+        Get routine by id
+        """
+        if (lock):
+            self._dataMutex.acquire()
+        routine = None
+        for item in self._items:
+            #print('== ', item.id, id)
+            if (item.id == id):
+                routine = item
+                break
+        if (lock):
+            self._dataMutex.release()
+        return routine
+    
+routines = RoutineModel(db, mutex, settings)
 
 # videos
 @dataclass
@@ -186,6 +425,38 @@ class Video:
     rating: str = 'none',
     sponsorblock: dict | None = None,
     playlistItemId: str = '',
+    
+    @staticmethod
+    def createFromRow(row):
+        video = Video(
+            id=int(row['id'] or 0),
+            order=int(row['order'] or 0),
+            videoId=row['videoId'],
+            source=row['source'],
+            url=row['url'],
+            filename=row['filename'],
+            filesize=int(row['filesize'] or 0),
+            title=row['title'],
+            description=row['description'],
+            duration=int(row['duration'] or 0),
+            position=float(row['position'] or 0),
+            width=int(row['width'] or 0),
+            height=int(row['height'] or 0),
+            tbr=int(row['tbr'] or 0),
+            fps=int(row['fps'] or 0),
+            vcodec=row['vcodec'],
+            status=int(row['status'] or 0),
+            watchedUrl=str(row['watchedUrl'] or ''),
+            channelName='', # no saved in db # see namespaces/videos::getPlayerInformation
+            channelImageUrl='', 
+            date='', 
+            likes=0, 
+            views=0, 
+            rating='None',
+            sponsorblock=None,
+            playlistItemId='',
+        )
+        return video
 
     def toObject(self):
         if (self.progress):
@@ -244,36 +515,10 @@ class VideoModel:
             cursor = self._db.cursor()
             cursor.execute('SELECT id, `order`, videoId, source, url, filename, filesize, title, description, duration, position, width, height, tbr, fps, vcodec, status, watchedUrl FROM videos ORDER BY `order`')
             rows = cursor.fetchall()
+            columns = cursor.description
         with self._dataMutex:
             for row in rows:
-                video = Video(
-                    id=int(row[0] or 0),
-                    order=int(row[1] or 0),
-                    videoId=row[2],
-                    source=row[3],
-                    url=row[4],
-                    filename=row[5],
-                    filesize=int(row[6] or 0),
-                    title=row[7],
-                    description=row[8],
-                    duration=int(row[9] or 0),
-                    position=float(row[10] or 0),
-                    width=int(row[11] or 0),
-                    height=int(row[12] or 0),
-                    tbr=int(row[13] or 0),
-                    fps=int(row[14] or 0),
-                    vcodec=row[15],
-                    status=int(row[16] or 0),
-                    watchedUrl=str(row[17] or ''),
-                    channelName='', # no saved in db # see namespaces/videos::getPlayerInformation
-                    channelImageUrl='', 
-                    date='', 
-                    likes=0, 
-                    views=0, 
-                    rating='None',
-                    sponsorblock=None,
-                    playlistItemId='',
-                )
+                video = Video.createFromRow(row)                
                 self._items.append(video)
                 if (video.status == STATUS_INIT):
                     # add to downloader queue
@@ -328,9 +573,6 @@ class VideoModel:
         except:
             pass
             
-        for t in self._items:
-            logger.debug('  id=' + str(t.id) + ', videoId=' + t.videoId)
-
         downloader.THREAD.remove(video) # remove from download queue
 
         with self._mutex:
@@ -340,7 +582,7 @@ class VideoModel:
             id = cursor.fetchone()
             if id is not None:
                 # delete logs
-                cursor.execute('DELETE FROM logs WHERE video_id = ?', (id[0],))
+                cursor.execute('DELETE FROM logs WHERE video_id = ?', (id['id'],))
             
             # delete video record
             cursor.execute('DELETE FROM videos WHERE videoId = ?', (video.videoId,))
@@ -495,6 +737,10 @@ class VideoModel:
                 # found
                 #logger.debug(f'  Already exists videoId={videoId}')
                 aVideo = self.byVideoId(videoId=videoId, lock=False)
+                if (aVideo == None):
+                    # not found in memory
+                    logger.error('video id=' + videoId + ' not found in memory.')
+                    return
                 sharedObject['ytVideos'].append(aVideo)
                 
                 # set playlist item id
@@ -664,11 +910,11 @@ class LogModel:
             rows = cursor.fetchall()
             for row in rows:
                 items.append({
-                    'id': int(row[0] or 0),
-                    'video_id': int(row[1] or 0),
-                    'action': row[2],
-                    'data': row[3],
-                    'created_at': int(row[4] or 0),
+                    'id': int(row['id'] or 0),
+                    'video_id': int(row['video_id'] or 0),
+                    'action': row['action'],
+                    'data': row['data'],
+                    'created_at': int(row['created_at'] or 0),
                 })
         return items
         
