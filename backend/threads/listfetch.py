@@ -16,6 +16,7 @@ import random
 import json
 from google.auth.exceptions import RefreshError
 from google.api_core.exceptions import RetryError, ServiceUnavailable, NotFound
+import yt_dlp
 
 import logging
 logger = logging.getLogger('piworkout-server')
@@ -68,15 +69,37 @@ class ListFetchThread:
     def markWatched(self, video):
         # this is locked from run()
         with model.video.dataMutex():
+            logger.info('markWatched() id=' + str(video.id))
+            if (video.watchedUrl == ''):
+                logger.info('  -- already marked as watched.')
+                # already marked as watched
+                return
+            youtubeUrl = video.url
             data = json.loads(video.watchedUrl)
             position = video.position
             video_length = video.duration
             
-            logger.info('markWatched() id=' + str(video.id))
             if (self.cj == None):
                 logger.warning('cookiejar not set.')
                 return
             
+        # just run yt-dlp to mark as watched
+        ydl_opts = {
+            'outtmpl': '/videos/test.mkv',
+            'mark_watched': True, # the mark watched func is overridden by the piworkoutpluginie plugin
+            'cookiefile': './db/cookies.txt',
+            'simulate': True,
+        }
+
+        # download
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            logger.info('------------------------------- starting simulated download')
+            ydl.download(youtubeUrl)
+            # post processing has finished and thread is about to close
+            # mark video as completed
+            logger.info('------------------------------- completed')
+        return
+    
         # new way of marking watched smarttube-next
         
         # get url endpoints and query data. was taken from yt-dlp previously in piworkoutpluginie
@@ -99,7 +122,7 @@ class ListFetchThread:
         if (fullWatched):
             # @deprecated
             # send fully watched
-            
+            """
             # create watched record
             nQs = {}
             nQs.update({
@@ -132,45 +155,38 @@ class ListFetchThread:
             url = urllib.parse.urlunparse(parsed_url._replace(path='/api/stats/watchtime', query=urllib.parse.urlencode(nQs, True)))
             logger.debug(url)
             requests.get(url, cookies=self.cj)
+            """
         else:
             # send position
-            
-            # create watched record
-            nQs = {}
-            nQs.update({
-                'ns': 'yt',
-                'ver': ['2'],
-                'cmt': '0',
-                'final': '1',
-                'docid': qs['docid'],
+            playbackUrl = 'https://www.youtube.com/api/stats/playback?ns=yt&ver=2&cmt=0&final=1'
+            p = urllib.parse.urlparse(playbackUrl)
+            pQs = urllib.parse.parse_qs(p.query)
+            pQs.update({
+                'docid': qs['docid'], # Video Id
                 'len': video_length,
-                'st': '0',
+                'st': position,
                 'et': position,
-                'cpn': cpn,
-                'ei': qs['ei'],
-                'vm': qs['vm'],
+                'cpn': cpn, # Client Playback Nonce, unique hash code for each query
+                'ei': qs['ei'], # Event Id
+                'vm': qs['vm'], # Visitor Monitoring?
                 'of': qs['of'],
             })
-            
-            url = urllib.parse.urlunparse(parsed_url._replace(path='/api/stats/playback', query=urllib.parse.urlencode(nQs, True)))
+            url = urllib.parse.urlunparse(p._replace(query=urllib.parse.urlencode(pQs, True)))
             logger.debug(url)
             requests.get(url, cookies=self.cj)
             
-            # update watched time
-            nQs = {}
-            nQs.update({
-                'ns': 'yt',
-                'ver': ['2'],
-                'cmt': '0',
-                'final': '1',
-                'docid': qs['docid'],
+            watchUrl = 'https://www.youtube.com/api/stats/watchtime?ns=yt&ver=2&cmt=0&final=1'
+            p = urllib.parse.urlparse(watchUrl)
+            pQs = urllib.parse.parse_qs(p.query)
+            pQs.update({
+                'docid': qs['docid'], # Video Id
                 'len': video_length,
-                'st': 0,
+                'st': position,
                 'et': position,
-                'cpn': cpn,
-                'ei': qs['ei'],
+                'cpn': cpn, # Client Playback Nonce, unique hash code for each query
+                'ei': qs['ei'], # Event Id
             })
-            url = urllib.parse.urlunparse(parsed_url._replace(path='/api/stats/watchtime', query=urllib.parse.urlencode(nQs, True)))
+            url = urllib.parse.urlunparse(p._replace(query=urllib.parse.urlencode(pQs, True)))
             logger.debug(url)
             requests.get(url, cookies=self.cj)
 

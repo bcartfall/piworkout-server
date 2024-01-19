@@ -7,6 +7,9 @@ from yt_dlp.utils import (
 import model
 import json
 
+import logging
+logger = logging.getLogger('piworkout-server')
+
 class PiWorkoutPluginIE(YoutubeIE, plugin_name='piworkout'):
     """
     We set mark_watched to True in options so that when the video is playing we can update the position that has been watched on youtube in realtime
@@ -23,8 +26,15 @@ class PiWorkoutPluginIE(YoutubeIE, plugin_name='piworkout'):
         
         # save urls to video model
         video = model.video.byVideoId(videoId=video_id)
-        video.watchedUrl = json.dumps(data)
+        if (video.position > 0):
+            video.watchedUrl = '' # don't need watched url any more, we already marked as watched
+        else:
+            video.watchedUrl = json.dumps(data)
         model.video.save(video=video)
          
-        # do NOT continue with super mark_watched. We do not want the video mark as 100% watched
-        #return super()._mark_watched(video_id, player_responses)
+        if (video.position > 0):
+            logger.info('Using yt-dlp to mark as watched.')
+            
+            # only mark as watched if video has been at least partially watched
+            # we were unable to reverse engineer the mark watched feature so we just use yt-dlp to mark it now
+            return super()._mark_watched(video_id, player_responses)

@@ -116,6 +116,10 @@ def markWatched():
         return
     
     # send request to youtube
+    if (MODEL.video.watchedUrl == ''):
+        # video has already been marked as watched
+        return
+    
     if (model.settings.get('youtubeCookie', '') == ''):
         # no cookie set
         return
