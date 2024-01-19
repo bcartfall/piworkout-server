@@ -9,23 +9,46 @@ import { Alert, Button } from '@mui/material';
 import PiVideo from '../components/PiVideo';
 import SettingsIcon from '@mui/icons-material/Settings';
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
+import useController from '../contexts/controller/use';
 
-export default function Main({ controller, videos, setVideos, failedToConnect }) {
+export default function Main({ }) {
+  const { state: { videos, failedToConnect, }, actions: { setVideos, }, controller } = useController();
+
   const navigate = useNavigate();
   const sendingApi = useRef(false); // only send connect request once
 
   const [searchParams, ] = useSearchParams();
 
-  const moveVideo = useCallback((dragIndex, hoverIndex) => {
-    let nVideos = [...videos];
+  //console.log('rendering', videos);
 
-    const fromVideo = nVideos[dragIndex],
-      toVideo = nVideos[hoverIndex];
-      nVideos[dragIndex] = toVideo;
-      nVideos[hoverIndex] = fromVideo;
+  const moveVideo = useCallback((dragVideo, toIndex, commit = false) => {
+    console.log('moving ', dragVideo.id, toIndex);
 
-    setVideos(nVideos);
-  }, [videos, setVideos,]);
+    let fromIndex = -1;
+    for (let i in videos) {
+      const video = videos[i];
+      if (video.id === dragVideo.id) {
+        fromIndex = i;
+        break;
+      }
+    }
+    if (fromIndex < 0) {
+      return;
+    }
+
+    videos[fromIndex] = videos[toIndex];
+    videos[toIndex] = dragVideo;
+    setVideos([...videos]);
+
+    if (commit) {
+      controller.send({
+        'namespace': 'videos',
+        'action': 'order',
+        'id': dragVideo.id,
+        'index': toIndex,
+      });
+    }
+  }, [videos, setVideos, controller, ]);
 
   useEffect(() => {
     // check if we need to redirect to settings page

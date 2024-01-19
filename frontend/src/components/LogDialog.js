@@ -9,14 +9,16 @@ import { Dialog, Paper, TableContainer, Table, TableHead, TableRow, TableCell, T
 
 import CloseIcon from '@mui/icons-material/Close';
 import IconButton from '@mui/material/IconButton';
+import useController from '../contexts/controller/use';
 
 const Transition = React.forwardRef(function Transition(props, ref) {
   return <Slide direction="up" ref={ref} {...props} />;
 });
 
-export default function LogDialog({controller, open, video, onClose}) {
+export default function LogDialog({open, video, onClose}) {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState([]);
+  const controller = useController().controller;
 
   useEffect(() => {
     setLoading(true);

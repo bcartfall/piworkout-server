@@ -17,7 +17,7 @@ export const defaultSnack = {
 };
 
 export class Controller {
-  constructor({ layout, setLayout, settings, setSettings, videos, setVideos, setConnected, setLoaded, isElectron }) {
+  constructor({ layout, setLayout, settings, setSettings, videos, setVideos, routines, setRoutines, connected, setConnected, setLoaded, isElectron, }) {
     console.log('init controller');
     this._layout = layout;
     this._setLayout = setLayout;
@@ -25,7 +25,9 @@ export class Controller {
     this._setSettings = setSettings;
     this._videos = videos;
     this._setVideos = setVideos;
-    this._connected = false;
+    this._routines = routines;
+    this._setRoutines = setRoutines;
+    this._connected = connected;
     this._setConnected = setConnected;
     this._setLoaded = setLoaded;
     this._currentVideo = null;
@@ -45,6 +47,9 @@ export class Controller {
         backendHost: window.location.host,
       };
     }
+  }
+
+  setupClient() {
     // load web socket
     this._client = new Client({ controller: this });
   }
@@ -170,6 +175,15 @@ export class Controller {
   setVideos(videos) {
     this._videos = [...videos];
     this._setVideos(this._videos);
+  }
+
+  setRoutines(routines) {
+    this._routines = [...routines];
+    this._setRoutines(this._routines);
+  }
+
+  getRoutines() {
+    return this._routines;
   }
 
   videosUseState() {

@@ -10,11 +10,11 @@ import { Button, Divider, Typography, TextField, Select, Grid, MenuItem, FormCon
 import CloudOffIcon from '@mui/icons-material/CloudOff';
 import SaveIcon from '@mui/icons-material/Save';
 import YouTubeIcon from '@mui/icons-material/YouTube';
+import useController from '../contexts/controller/use';
 
-export default function Settings(props) {
+export default function Settings({ }) {
   const navigate = useNavigate();
-
-  const { settings, controller } = props;
+  const { state: { settings, connected, }, actions: { setFailedToConnect, }, controller } = useController();
 
   const [hasBackendFailure, setHasBackendFailure] = useState(controller.getClient().getHasBackendFailure());
   const [connecting, setConnecting] = useState(false);
@@ -55,7 +55,7 @@ export default function Settings(props) {
           setError(null);
           setConnecting(false);
           setHasBackendFailure(false);
-          props.setFailedToConnect(false);
+          setFailedToConnect(false);
 
           // save
           controller.setLocalSettings('backendHost', backendHost);
@@ -134,7 +134,7 @@ export default function Settings(props) {
   };
 
   let connectElement = '';
-  if (!props.connected) {
+  if (!connected) {
     connectElement = (
       <Alert severity="info" sx={{ mb: 2 }} action={
         <Button variant="contained" size="small" onClick={onConnect}>

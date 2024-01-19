@@ -15,6 +15,10 @@ import ReplayIcon from '@mui/icons-material/Replay';
 import AddLinkIcon from '@mui/icons-material/AddLink';
 
 import LogDialog from '../components/LogDialog';
+import ExerciseToolbar from '../components/ExerciseToolbar';
+import useController from '../contexts/controller/use';
+
+const exerciseToolbarEnabled = false; // todo enable when working on toolbar
 
 function ScrollTop(props) {
   const { children, window } = props;
@@ -53,7 +57,7 @@ function ScrollTop(props) {
 }
 
 export default function Layout(props) {
-  const { layout, controller } = props;
+  const { state: { layout }, controller } = useController();
   const { snack } = layout;
 
   const closeLog = useCallback(() => {
@@ -67,7 +71,7 @@ export default function Layout(props) {
       return;
     }
 
-    props.controller.closeSnack();
+    controller.closeSnack();
   };
 
   const refresh = () => {
@@ -133,7 +137,7 @@ export default function Layout(props) {
 
   return (
     <>
-      <AppBar>
+      <AppBar color="primary">
         <Toolbar>
           <Typography
             variant="h6"
@@ -167,6 +171,7 @@ export default function Layout(props) {
             </Link>
           </Box>
         </Toolbar>
+        { exerciseToolbarEnabled && (<ExerciseToolbar />)}
       </AppBar>
       <Toolbar id="back-to-top-anchor" />
       <Outlet />
@@ -184,7 +189,7 @@ export default function Layout(props) {
         action={snack.action}
         key="snackbar-top-right"
       />
-      <LogDialog controller={controller} open={layout.logDialog.open} video={layout.logDialog.video} onClose={closeLog} />
+      <LogDialog open={layout.logDialog.open} video={layout.logDialog.video} onClose={closeLog} />
     </>
   );
 };

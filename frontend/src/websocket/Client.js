@@ -88,6 +88,7 @@ export default class Client {
       case 'settings': this.onSettings(event, json); break;
       case 'connect': this.onConnect(event, json); break;
       case 'videos': this.onVideos(event, json); break;
+      case 'routines': this.onRoutines(event, json); break;
       default:
     }
     if (this._onMessageCallback) {
@@ -123,6 +124,7 @@ export default class Client {
   }
 
   onInit(event, json) {
+    console.log('onInit', json);
     if (this._initResolve) {
       this._initResolve(json);
       this._initResolve = null;
@@ -130,6 +132,7 @@ export default class Client {
     this._controller.setConnected(json.data.connected);
     this._controller.setSettings({ ...json.data.settings });
     this._controller.setVideos([...json.data.videos]);
+    this._controller.setRoutines([...json.data.routines]);
     this._controller._setLoaded(true);
   }
 
@@ -172,6 +175,31 @@ export default class Client {
     } else {
       // update all videos
       this._controller.setVideos(json.videos);
+    }
+  }
+
+  onRoutines(event, json) {
+    console.log('onRoutines()', json);
+
+    if (json.routine) {
+      // update single video
+      let found = false,
+        routines = this._controller.getRoutines();
+      for (let id in routines) {
+        if (routines[id].id === json.routine.id) {
+          routines[id] = json.routine;
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        routines.append(json.routine);
+      }
+
+      this._controller.setRoutines(routines);
+    } else {
+      // update all routines
+      this._controller.setRoutines(json.routines);
     }
   }
 
