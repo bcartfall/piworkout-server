@@ -24,8 +24,10 @@ import defaultChannelImage from '../assets/images/youtube.svg';
 import eStatus from '../enums/VideoStatus';
 import { SPONSORBLOCK_SKIP_CATEGORIES } from '../enums/SponsorBlock'
 import VideoContextMenu from '../components/VideoContextMenu';
+import useController from '../contexts/controller/use';
 
-export default React.memo(function Player({ controller, settings, }) {
+export default React.memo(function Player({ }) {
+  const { state: { settings, }, controller } = useController();
   const navigate = useNavigate();
   const [currentVideo, setCurrentVideo] = useState(null);
   const [rating, setRating] = useState('');
@@ -64,10 +66,13 @@ export default React.memo(function Player({ controller, settings, }) {
 
   console.log('rendering Player', id);
 
-  const updateNextSkip = useCallback((source, currentTime) => {
+  const updateNextSkip = useCallback((source, currentTime, video = null) => {
     let skipSegment = null;
-    if (currentVideo.sponsorblock) {
-      for (const segment of currentVideo.sponsorblock.segments) {
+    if (!video) {
+      video = currentVideo;
+    }
+    if (video.sponsorblock) {
+      for (const segment of video.sponsorblock.segments) {
         const categoryIndex = SPONSORBLOCK_SKIP_CATEGORIES.indexOf(segment.category);
         if (categoryIndex < 0) {
           continue;
@@ -196,6 +201,7 @@ export default React.memo(function Player({ controller, settings, }) {
       videoId: currentVideo ? currentVideo.id : 0,
       data: controller.getCurrentTime(),
     });
+    console.log('-------------------------- PLAY ----------------', currentVideo);
     
     // determine next segement to skip
     updateNextSkip('play', currentTime);
@@ -332,6 +338,7 @@ export default React.memo(function Player({ controller, settings, }) {
         audioMounted.current = false;
         videoChanging.current = true;
         nextSkip.current = null;
+        shouldRequestInformation.current = true;
         navigate('/player/' + nVideo.id);
       }
     } else if (direction === 'previous') {
@@ -347,6 +354,7 @@ export default React.memo(function Player({ controller, settings, }) {
         audioMounted.current = false;
         videoChanging.current = true;
         nextSkip.current = null;
+        shouldRequestInformation.current = true;
         navigate('/player/' + pVideo.id);
       }
     }
@@ -435,6 +443,7 @@ export default React.memo(function Player({ controller, settings, }) {
         if (video.id === id) {
           setCurrentVideo(video);
           controller.setCurrentVideo(video);
+          console.log('------------------------ 5553', shouldRequestInformation.current)
 
           // get more information about video and channel when video id changes
           if (shouldRequestInformation.current) {
@@ -453,6 +462,7 @@ export default React.memo(function Player({ controller, settings, }) {
               if (json.uuid === uuid) {
                 // set current video will rerender and show updated information
                 setCurrentVideo(json.video);
+                updateNextSkip('playerInformation', json.video.position, json.video);
 
                 // clear callback
                 controller.getClient().onMessageCall(null);
@@ -476,7 +486,7 @@ export default React.memo(function Player({ controller, settings, }) {
         }
       });
     }
-  }, [currentVideo, shouldRequestInformation, controller, id, playing, onPause, ]);
+  }, [currentVideo, shouldRequestInformation, controller, id, playing, onPause, updateNextSkip, ]);
 
   const toggleFullscreen = useCallback((event) => {
     if (event) {
