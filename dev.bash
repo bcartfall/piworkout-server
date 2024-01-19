@@ -5,4 +5,4 @@
 # docker compose -f compose-dev.yaml build backend && docker compose -f compose-dev.yaml up backend
 
 # run all
-docker compose -f compose-dev.yaml build && docker compose -f compose-dev.yaml up
+docker-compose -f compose-dev.yaml build && docker-compose -f compose-dev.yaml up
