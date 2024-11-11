@@ -6,6 +6,7 @@
 
 import asyncio
 import websockets
+from websockets.legacy.server import serve
 import json
 import os
 from queue import Queue, Empty
@@ -173,6 +174,6 @@ def start():
     host = os.environ['BACKEND_HOST']
     port = os.environ['BACKEND_PORT']
     
-    start_server = websockets.serve(handler, host, port)
+    start_server = serve(handler, host, port)
     asyncio.get_event_loop().run_until_complete(start_server)
     asyncio.get_event_loop().run_forever()
