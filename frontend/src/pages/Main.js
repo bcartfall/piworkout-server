@@ -8,7 +8,7 @@ import React, { useEffect, useRef, useCallback, } from 'react';
 import { Alert, Button } from '@mui/material';
 import PiVideo from '../components/PiVideo';
 import SettingsIcon from '@mui/icons-material/Settings';
-import { Link, useSearchParams, useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import useController from '../contexts/controller/use';
 
 export default function Main({ }) {
@@ -17,8 +17,7 @@ export default function Main({ }) {
   const navigate = useNavigate();
   const sendingApi = useRef(false); // only send connect request once
 
-  const [searchParams, ] = useSearchParams();
-
+  const searchParams = new URLSearchParams(window.location.search);
   //console.log('rendering', videos);
 
   const moveVideo = useCallback((dragVideo, toIndex, commit = false) => {
@@ -63,6 +62,8 @@ export default function Main({ }) {
     if (!sendingApi.current) {
       // connect with YouTube API
       sendingApi.current = true;
+      console.log(searchParams);
+      console.log('looking for api state', searchParams.get('state'))
       if (searchParams.get('state')) {
         // update api with state
         const data = {

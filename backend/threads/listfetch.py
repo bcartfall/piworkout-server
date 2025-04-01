@@ -17,6 +17,7 @@ import json
 from google.auth.exceptions import RefreshError
 from google.api_core.exceptions import RetryError, ServiceUnavailable, NotFound
 import yt_dlp
+import subprocess
 
 import logging
 logger = logging.getLogger('piworkout-server')
@@ -83,6 +84,17 @@ class ListFetchThread:
                 logger.warning('cookiejar not set.')
                 return
             
+        # unset watchedUrl so it doesn't run more than once
+        with model.video.dataMutex():
+            video.watchedUrl = ''
+            model.video.save(MODEL.video, False)
+        
+        # run command yt-dlp to mark as watched
+        subprocess.run(["yt-dlp", youtubeUrl, "--mark-watched", "--simulate", "--cookies=./db/cookies.txt"])
+        
+        model.video.save(video=video)
+        
+        return     
         # just run yt-dlp to mark as watched
         ydl_opts = {
             'outtmpl': '/videos/test.mkv',

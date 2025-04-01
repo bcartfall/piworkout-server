@@ -38,7 +38,7 @@ def receive(event, queue):
                 value = event['data'][key]
                 model.settings.put(key, event['data'][key])
 
-        # convert youtube copy and pasted cookie to a formtat yt-dlp understands
+        # convert youtube copy and pasted cookie to a format yt-dlp understands
         if event['data']['youtubeCookie'].strip() != '':
             cookies = event['data']['youtubeCookie'].split('\n')
             f = open('./db/cookies.txt', 'w')
