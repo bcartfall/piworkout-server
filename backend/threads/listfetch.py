@@ -87,12 +87,10 @@ class ListFetchThread:
         # unset watchedUrl so it doesn't run more than once
         with model.video.dataMutex():
             video.watchedUrl = ''
-            model.video.save(MODEL.video, False)
+            model.video.save(video, False)
         
         # run command yt-dlp to mark as watched
         subprocess.run(["yt-dlp", youtubeUrl, "--mark-watched", "--simulate", "--cookies=./db/cookies.txt"])
-        
-        model.video.save(video=video)
         
         return     
         # just run yt-dlp to mark as watched
