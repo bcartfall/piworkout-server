@@ -41,38 +41,45 @@ def receive(event, queue):
         # convert youtube copy and pasted cookie to a format yt-dlp understands
         if event['data']['youtubeCookie'].strip() != '':
             cookies = event['data']['youtubeCookie'].split('\n')
-            f = open('./db/cookies.txt', 'w')
+            
+            if (cookies[0] == '# Netscape HTTP Cookie File'):
+                # already in correct format
+                with open('./db/cookies.txt', 'w') as f:
+                    f.write(event['data']['youtubeCookie'])
+            else:
+                # convert to correct format                
+                f = open('./db/cookies.txt', 'w')
 
-            f.write('# Netscape HTTP Cookie File\n')
-            line = 0
-            for cookie in cookies:
-                line += 1
-                try:
-                    a = cookie.split('\t')
-                    name = a[0]
-                    value = a[1]
-                    domain = a[2]
-                    path = a[3]
-                    expiration = a[4]
-                    httpOnly = a[5]
-                    if (name == ''):
-                        continue
-                    if (domain[0] != '.'):
-                        domain = '.' + domain
-                    if (httpOnly == '✓'):
-                        httpOnly = 'TRUE'
-                    else:
-                        httpOnly = 'FALSE'
-                    if (expiration == 'Session'):
-                        date = datetime.datetime.today() + datetime.timedelta(days=1)
-                    else:
-                        date = datetime.datetime.fromisoformat(expiration)
-                    expiration = math.floor(datetime.datetime.timestamp(date))
-                    
-                    f.write('\t'.join([domain, 'TRUE', path, httpOnly, str(expiration), name, value]) + '\n')
-                except:
-                    logger.warning(f'exception in converting cookie on line {line}')
-            f.close()
+                f.write('# Netscape HTTP Cookie File\n')
+                line = 0
+                for cookie in cookies:
+                    line += 1
+                    try:
+                        a = cookie.split('\t')
+                        name = a[0]
+                        value = a[1]
+                        domain = a[2]
+                        path = a[3]
+                        expiration = a[4]
+                        httpOnly = a[5]
+                        if (name == ''):
+                            continue
+                        if (domain[0] != '.'):
+                            domain = '.' + domain
+                        if (httpOnly == '✓'):
+                            httpOnly = 'TRUE'
+                        else:
+                            httpOnly = 'FALSE'
+                        if (expiration == 'Session'):
+                            date = datetime.datetime.today() + datetime.timedelta(days=1)
+                        else:
+                            date = datetime.datetime.fromisoformat(expiration)
+                        expiration = math.floor(datetime.datetime.timestamp(date))
+                        
+                        f.write('\t'.join([domain, 'TRUE', path, httpOnly, str(expiration), name, value]) + '\n')
+                    except:
+                        logger.warning(f'exception in converting cookie on line {line}')
+                f.close()
             
             # update listfetch cookiejar
             cj = cookielib.MozillaCookieJar('./db/cookies.txt')
