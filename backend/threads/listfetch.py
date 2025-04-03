@@ -89,7 +89,8 @@ class ListFetchThread:
             model.video.save(video, False)
         
         # run command yt-dlp to mark as watched
-        subprocess.run(["yt-dlp", youtubeUrl, "--mark-watched", "--simulate", "--cookies=./db/cookies.txt"])
+        # disable yt-dlp --mark-watched. We now use embeded youtube player to sync played times
+        #subprocess.run(["yt-dlp", youtubeUrl, "--mark-watched", "--simulate", "--cookies=./db/cookies.txt"])
         
         return     
         # just run yt-dlp to mark as watched

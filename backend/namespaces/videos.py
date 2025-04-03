@@ -118,8 +118,16 @@ def changeOrder(event, queue):
     # update (all) clients
     broadcast()
     
+def debugPlaybackPositions():
+    # debug: show video playback positions
+    with model.video.dataMutex():
+        for item in model.video.data(False, False):
+            logger.debug('  id=' + str(item.id) + ', videoId=' + item.videoId + ', position=' + str(item.position))
+    
 def remove(event, queue):
     logger.info('Removing video id=' + str(event['id']))
+    
+    #debugPlaybackPositions()
     
     removeVideo = model.video.byId(event['id'])
     if (removeVideo == None):
@@ -159,7 +167,9 @@ def remove(event, queue):
                 video.order = index
                 model.video.save(video, lock=False)
             index += 1
-        
+    
+    #debugPlaybackPositions()
+    
     # update (all) clients
     broadcast()
 

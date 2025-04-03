@@ -100,6 +100,10 @@ def savePosition(event, updateDB = True, updateYT = True):
     if (MODEL.video != None):
         # update position for video in database
         with model.video.dataMutex():
+            if (MODEL.video.id != event['videoId']):
+                # video does not match
+                return
+            
             MODEL.video.position = event['time']
             if (event['action'] == 'ended'):
                 MODEL.video.position = MODEL.video.duration
