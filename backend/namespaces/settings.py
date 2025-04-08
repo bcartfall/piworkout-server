@@ -18,7 +18,7 @@ import logging
 logger = logging.getLogger('piworkout-server')
 
 # keys that can be saved from settings form
-KEYS = ['audioDelay', 'networkDelay', 'videoQuality', 'playlistUrl', 'youtubeCookie', 'googleAPIKey']
+KEYS = ['audioDelay', 'networkDelay', 'videoQuality', 'playlistUrl', 'youtubeCookie', 'googleAPIKey', 'ytMarkWatchedHost']
 
 def data():
     obj = {}
