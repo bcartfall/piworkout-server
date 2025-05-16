@@ -1,7 +1,7 @@
 services:
   frontend-react:
     build: ./frontend/
-    restart: on-failure
+    restart: always
     volumes:
       - /app/frontend-react/node_modules
       - ./frontend/:/app/frontend-react
@@ -15,7 +15,7 @@ services:
 
   frontend-nginx:
     image: nginx
-    restart: on-failure
+    restart: always
     volumes:
       - ./nginx/nginx-dev.conf:/etc/nginx/conf.d/default.conf
       - ./ssl/cert.pem:/etc/nginx/ssl/cert.pem
@@ -35,7 +35,7 @@ services:
       - frontend-react
   backend:
     build: ./backend/
-    restart: on-failure
+    restart: always
     #ports:
     #  - "5001:5001"
     environment:

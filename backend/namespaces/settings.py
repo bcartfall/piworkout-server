@@ -5,11 +5,12 @@
 """
 
 import model
-import json
-import time
 import datetime
 import math
 import http.cookiejar as cookielib
+import yt_dlp
+import sys
+import os
 
 from threads import listfetch
 import server
@@ -93,3 +94,10 @@ def receive(event, queue):
             'settings': data(),
         }
         server.broadcast(obj, queue)
+    elif (event['method'] == 'GET'):
+        if (event['action'] == 'update-yt-dlp'):
+            logger.info('updating yt-dlp')
+            with yt_dlp.YoutubeDL() as ydl:
+                yt_dlp.Updater(ydl).update()
+            # restart server
+            os.execl(sys.executable, os.path.abspath(__file__), *sys.argv)

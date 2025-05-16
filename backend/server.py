@@ -9,7 +9,10 @@ import websockets
 from websockets.legacy.server import serve
 import json
 import os
+import sys
 from queue import Queue, Empty
+import yt_dlp
+import yt_dlp.version
 
 import model
 
@@ -20,6 +23,11 @@ logger = logging.getLogger('piworkout-server')
 
 CLIENTS = set()
 MESSAGE_ID = 0
+
+ytDlpVersion = yt_dlp.version.__version__
+with yt_dlp.YoutubeDL() as ydl:
+    ytDlpVersion = ytDlpVersion + ' (latest=' + yt_dlp.Updater(ydl)._get_version_info('latest')[0] + ')'
+
 
 async def receiveJson(event, queue):
     """
@@ -50,6 +58,8 @@ async def receiveJson(event, queue):
             logs.receive(event, queue)
         case 'ping':
             ping.receive(event, queue)
+        case 'exit':
+            sys.exit() # restart application
         case _:
             logger.warning(f'  namespace {namespace} not handled.')
 
@@ -128,9 +138,13 @@ async def handler(websocket):
                 'videos': videos.data(),
                 'player': player.data(),
                 'routines': routines.data(),
+                'versions': {
+                    'piworkoutServer': '1.0.0',
+                    'ytDlp': ytDlpVersion,
+                }
             },
         }
-
+        
         try:
             queue.put(json.dumps(obj))
         except websockets.exceptions.ConnectionClosed:
