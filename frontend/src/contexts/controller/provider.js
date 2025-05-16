@@ -28,6 +28,8 @@ export default function ControllerProvider({ children, isElectron, failedToConne
   });
   const [videos, setVideos] = useState([]);
 
+  const [versions, setVersions] = useState([]);
+
   const [routines, setRoutines] = useState([]);
   const [currentRoutine, setCurrentRoutine] = useState(null);
   const [currentExercise, setCurrentExercise] = useState(null);
@@ -35,7 +37,7 @@ export default function ControllerProvider({ children, isElectron, failedToConne
   useEffect(() => {
     if (!controller.current) {
       // setup controller
-      controller.current = new Controller({ layout, setLayout, settings, setSettings, videos, setVideos, routines, setRoutines, connected, setConnected, setLoaded, isElectron });
+      controller.current = new Controller({ layout, setLayout, settings, setSettings, videos, setVideos, routines, setRoutines, versions, setVersions, connected, setConnected, setLoaded, isElectron });
       controller.current.setupClient();
       controller.current.getClient().onFailedToConnect(() => {
         console.log('setting on failed to connect');
@@ -60,7 +62,7 @@ export default function ControllerProvider({ children, isElectron, failedToConne
   }, [onKeyDown]);
 
   const value = {
-    state: { routines, currentRoutine, currentExercise, layout, videos, settings, connected, },
+    state: { routines, currentRoutine, currentExercise, layout, videos, settings, versions, connected, },
     actions: { setRoutines, setCurrentRoutine, setCurrentExercise, setLayout, setVideos, setSettings, setConnected, },
     controller: controller.current,
   };

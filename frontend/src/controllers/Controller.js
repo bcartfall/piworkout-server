@@ -17,7 +17,7 @@ export const defaultSnack = {
 };
 
 export class Controller {
-  constructor({ layout, setLayout, settings, setSettings, videos, setVideos, routines, setRoutines, connected, setConnected, setLoaded, isElectron, }) {
+  constructor({ layout, setLayout, settings, setSettings, videos, setVideos, routines, setRoutines, versions, setVersions, connected, setConnected, setLoaded, isElectron, }) {
     console.log('init controller');
     this._layout = layout;
     this._setLayout = setLayout;
@@ -27,6 +27,8 @@ export class Controller {
     this._setVideos = setVideos;
     this._routines = routines;
     this._setRoutines = setRoutines;
+    this._versons = versions;
+    this._setVersions = setVersions;
     this._connected = connected;
     this._setConnected = setConnected;
     this._setLoaded = setLoaded;
@@ -184,6 +186,15 @@ export class Controller {
 
   getRoutines() {
     return this._routines;
+  }
+
+  setVersions(versions) {
+    this._versions = {...versions};
+    this._setVersions(this._versions);
+  }
+
+  getVersions() {
+    return this._versions;
   }
 
   videosUseState() {

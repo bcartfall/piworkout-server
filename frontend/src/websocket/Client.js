@@ -133,6 +133,7 @@ export default class Client {
     this._controller.setSettings({ ...json.data.settings });
     this._controller.setVideos([...json.data.videos]);
     this._controller.setRoutines([...json.data.routines]);
+    this._controller.setVersions({ ...json.data.versions });
     this._controller._setLoaded(true);
   }
 
