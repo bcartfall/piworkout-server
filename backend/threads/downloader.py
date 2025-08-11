@@ -248,12 +248,11 @@ class DownloaderThread:
                 'data': str(id) + '-' + format['name'] + '-' + filename
             })
                 
-            # 2025-08-11: Removed os.utime because this could lock up the thread
             # set time of file to now
-            #now = time.time()
-            #fullFile = '/videos/' + str(id) + '-' + format['name'] + '-' + filename
-            #logger.debug('setting time of file ' + fullFile)
-            #os.utime(fullFile, (now, now))
+            now = time.time()
+            fullFile = '/videos/' + str(id) + '-' + format['name'] + '-' + filename
+            logger.debug('setting time of file ' + fullFile)
+            os.utime(fullFile, (now, now))
             
             self._previousWeight += format['weight']
 
