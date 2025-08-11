@@ -213,10 +213,11 @@ class DownloaderThread:
         #logger.debug('/videos/' + str(self._currentVideo.id) + '-' + self._currentVideo.filename)
 
         for format in self._formats:
+            logger.debug('Downloading format ' + format['name'] + ', videoId=' + str(self._currentVideo.videoId))
             self._lastUpdate = 0
             self._step = 0 # reset step back to video
             self._totalBytesEstimate = 0
-            self._currentFormat = format            
+            self._currentFormat = format
             # https://github.com/yt-dlp/yt-dlp/blob/master/yt_dlp/YoutubeDL.py
             ydl_opts = {
                 'verbose': True,
@@ -225,8 +226,8 @@ class DownloaderThread:
                 'outtmpl': '/videos/' + str(id) + '-' + format['name'] + '-' + filename, # was '%(title)s.%(ext)s'
                 #'throttledratelimit': 1500,
                 'format_sort': ['res:' + str(format['height'])], # force resolution
-                'mark_watched': True, # the mark watched func is overridden by the piworkoutpluginie plugin and the data is saved to the video model
-                'cookiefile': './db/cookies.txt',
+                #'mark_watched': True, # the mark watched func is overridden by the piworkoutpluginie plugin and the data is saved to the video model
+                #'cookiefile': './db/cookies.txt',
                 #'postprocessors': [ # sponsorblock now handled with player directly
                 #    {'key': 'SponsorBlock'},
                 #    {'key': 'ModifyChapters', 'remove_sponsor_segments': ['sponsor', 'preview']}
@@ -247,10 +248,12 @@ class DownloaderThread:
                 'data': str(id) + '-' + format['name'] + '-' + filename
             })
                 
+            # 2025-08-11: Removed os.utime because this could lock up the thread
             # set time of file to now
-            now = time.time()
-            fullFile = '/videos/' + str(id) + '-' + format['name'] + '-' + filename
-            os.utime(fullFile, (now, now))
+            #now = time.time()
+            #fullFile = '/videos/' + str(id) + '-' + format['name'] + '-' + filename
+            #logger.debug('setting time of file ' + fullFile)
+            #os.utime(fullFile, (now, now))
             
             self._previousWeight += format['weight']
 
