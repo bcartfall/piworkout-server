@@ -40,6 +40,7 @@ export default function Settings({ }) {
     console.log('onSubmit');
     if (!hasBackendFailure) {
       // send to server
+      console.log('sending settings to server', settings);
       controller.send({
         'namespace': 'settings',
         'method': 'PUT',
@@ -65,6 +66,7 @@ export default function Settings({ }) {
           controller.setLocalSettings('ssl', ssl);
         }).catch((response) => {
           // failed to connect
+          console.log(response);
           setConnecting(false);
           setHasBackendFailure(true);
           setError('Error connecting to web socket at ' + backendHost + '.');
@@ -134,13 +136,17 @@ export default function Settings({ }) {
       console.error('No mark-watched host set in settings.');
       return;
     }
-    const c = await window.electron.store.getCookies('https://www.youtube.com');
-    if (!c || c.length === 0) {
+
+    const cookies = {
+      'https://www.youtube.com': await window.electron.store.getCookies('https://www.youtube.com'),
+      'https://accounts.youtube.com': await window.electron.store.getCookies('https://accounts.youtube.com'),
+    };
+    if (!cookies['https://www.youtube.com'] || cookies['https://www.youtube.com'].length === 0) {
       return;
     }
     const response = await fetch(`http://${host}/api/cookies/update`, {
       method: 'POST',
-      body: JSON.stringify(c),
+      body: JSON.stringify(cookies),
     });
     console.log('updateCookies() response=', await response.json());
   };
@@ -186,10 +192,10 @@ export default function Settings({ }) {
             <Divider sx={{ m: 2 }} />
             <Grid container spacing={2}>
               <Grid item xs={10}>
-                <TextField fullWidth required label="Backend Host" value={backendHost} onChange={(e) => setBackendHost(e.target.value)} />
+                <TextField fullWidth required label="Backend Host" value={backendHost ? backendHost : ''} onChange={(e) => setBackendHost(e.target.value)} />
               </Grid>
               <Grid item xs={2}>
-                <FormControlLabel control={<Checkbox checked={ssl} onChange={(event) => {setSsl(event.target.checked);}} />} label="SSL" />
+                <FormControlLabel control={<Checkbox checked={ssl} onChange={(event) => { setSsl(event.target.checked); }} />} label="SSL" />
               </Grid>
             </Grid>
             <Button type="submit" variant="contained" sx={{ mt: 2 }} fullWidth onClick={onSubmit}><SaveIcon sx={{ mr: 0.5 }} /> Save Settings</Button>
@@ -243,7 +249,7 @@ export default function Settings({ }) {
                 <TextField fullWidth required label="Backend Host" value={backendHost} onChange={(e) => setBackendHost(e.target.value)} />
               </Grid>
               <Grid item xs={2}>
-                <FormControlLabel control={<Checkbox checked={ssl} onChange={(event) => {setSsl(event.target.checked);}} />} label="SSL" />
+                <FormControlLabel control={<Checkbox checked={ssl} onChange={(event) => { setSsl(event.target.checked); }} />} label="SSL" />
               </Grid>
             </Grid>
           </>}
@@ -260,9 +266,9 @@ export default function Settings({ }) {
             <TextField fullWidth required label="yt-marked-watched Host" value={settings.ytMarkWatchedHost} onChange={(e) => onChange('ytMarkWatchedHost', e.target.value)} />
           </FormControl>
           {!hasYoutubeCookies && (
-          <Typography sx={{ mb: 2 }}>
-            You do not currently have a youtube session.<br />Log in to Youtube so that the automatic mark-position feature will work.
-          </Typography>
+            <Typography sx={{ mb: 2 }}>
+              You do not currently have a youtube session.<br />Log in to Youtube so that the automatic mark-position feature will work.
+            </Typography>
           )}
           <Button variant="outlined" size="small" color="secondary" sx={{ ml: 2 }} onClick={onOpenYoutube}>Open Youtube</Button>
           <Button variant="outlined" size="small" color="secondary" sx={{ ml: 2 }} onClick={onUpdateCookies}>Update yt-mark-watched Cookies</Button>
@@ -283,7 +289,10 @@ export default function Settings({ }) {
               </FormControl>
             </Grid>
             <Grid item xs={12}>
-              <TextField fullWidth required label="Play List URL" value={settings.playlistUrl} onChange={(e) => onChange('playlistUrl', e.target.value)} />
+              <TextField fullWidth required label="Playlist URL" value={settings.playlistUrl} onChange={(e) => onChange('playlistUrl', e.target.value)} />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField fullWidth required label="yt-dlp Additional Arguments" value={settings.ytDlpArgv} onChange={(e) => onChange('ytDlpArgv', e.target.value)} />
             </Grid>
             {true == false && (
               <Grid item xs={12}>
@@ -298,8 +307,8 @@ export default function Settings({ }) {
           <Divider sx={{ mt: 4, mb: 4 }} />
 
           <Box>
-            <Chip label={ 'piWorkout Server ' + versions.piworkoutServer } variant="outlined" />
-            <Chip sx={{ ml: 1 }} label={ 'yt-dlp ' + versions.ytDlp } variant="outlined" />
+            <Chip label={'piWorkout Server ' + versions.piworkoutServer} variant="outlined" />
+            <Chip sx={{ ml: 1 }} label={'yt-dlp ' + versions.ytDlp} variant="outlined" />
           </Box>
           <Box sx={{ mt: 2 }}>
             <Button variant="outlined" size="small" color="secondary" onClick={onUpdateYtDlp}>Update yt-dlp</Button>

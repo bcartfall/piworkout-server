@@ -10,6 +10,7 @@ import threading
 import time
 import yt_dlp
 import os
+import shlex
 
 import model, server
 from threads import sbgenerator
@@ -218,6 +219,9 @@ class DownloaderThread:
             self._step = 0 # reset step back to video
             self._totalBytesEstimate = 0
             self._currentFormat = format
+
+
+
             # https://github.com/yt-dlp/yt-dlp/blob/master/yt_dlp/YoutubeDL.py
             ydl_opts = {
                 'verbose': True,
@@ -234,10 +238,25 @@ class DownloaderThread:
                 #], #'sponsorblock_remove': ['sponsor', 'preview'],
             }
 
+            # get user options
+            ytDlpArgv = model.settings.get('ytDlpArgv').strip()
+            if (ytDlpArgv):
+                # Example: Parse options from a command-line-like string
+                # Split the string into argv list (handle quoted strings if needed; simple split works for basic cases)
+                argv = shlex.split(ytDlpArgv)
+
+                # Parse the arguments
+                user_opts = yt_dlp.parse_options(argv)
+
+                # add to options
+                ydl_opts = user_opts.ydl_opts | ydl_opts
+
             # download
+            logger.debug('Downloading with options: ' + str(ydl_opts))
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 logger.info('------------------------------- starting download')
                 ydl.download(url)
+
                 # post processing has finished and thread is about to close
                 # mark video as completed
                 logger.info('------------------------------- completed')

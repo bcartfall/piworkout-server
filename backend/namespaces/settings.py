@@ -19,7 +19,7 @@ import logging
 logger = logging.getLogger('piworkout-server')
 
 # keys that can be saved from settings form
-KEYS = ['audioDelay', 'networkDelay', 'videoQuality', 'playlistUrl', 'youtubeCookie', 'googleAPIKey', 'ytMarkWatchedHost']
+KEYS = ['audioDelay', 'networkDelay', 'videoQuality', 'playlistUrl', 'youtubeCookie', 'googleAPIKey', 'ytMarkWatchedHost', 'ytDlpArgv']
 
 def data():
     obj = {}
@@ -33,7 +33,7 @@ def data():
 
 def receive(event, queue):
     if (event['method'] == 'PUT'):
-        logger.info('updating settings')
+        logger.info('updating settings', str(event['data']))
         for key in event['data']:
             if key in KEYS:
                 value = event['data'][key]

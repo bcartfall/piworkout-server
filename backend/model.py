@@ -83,6 +83,7 @@ class SettingsModel:
         'youtubeApiToken': '',
         'googleAPIKey': '',
         'ytMarkWatchedHost': '',
+        'ytDlpArgv': '',
     }
     _dataMutex = threading.Lock()
 

@@ -25,6 +25,7 @@ export default function ControllerProvider({ children, isElectron, failedToConne
     playlistUrl: '',
     youtubeCookie: '',
     googleAPIKey: '',
+    ytDlpArgv: '',
   });
   const [videos, setVideos] = useState([]);
 
