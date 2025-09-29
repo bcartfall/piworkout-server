@@ -294,12 +294,10 @@ export default function Settings({ }) {
             <Grid item xs={12}>
               <TextField fullWidth required label="yt-dlp Additional Arguments" value={settings.ytDlpArgv} onChange={(e) => onChange('ytDlpArgv', e.target.value)} />
             </Grid>
-            {true == false && (
-              <Grid item xs={12}>
-                <TextField label="YouTube Cookie" multiline rows={4} fullWidth value={settings.youtubeCookie} onChange={(e) => onChange('youtubeCookie', e.target.value)} />
-                <a href="https://github.com/dandv/convert-chrome-cookies-to-netscape-format" target="_blank" rel="noreferrer">How To Copy Cookies</a> | <a href="https://youtube.com" target="_blank" rel="noreferrer">YouTube</a>
-              </Grid>
-            )}
+            <Grid item xs={12}>
+              <TextField label="YouTube Cookie" multiline rows={4} fullWidth value={settings.youtubeCookie} onChange={(e) => onChange('youtubeCookie', e.target.value)} />
+              <a href="https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies" target="_blank" rel="noreferrer">How To Copy Cookies</a>
+            </Grid>
           </Grid>
           <Button type="submit" variant="contained" sx={{ mt: 2 }} fullWidth onClick={onSubmit}><SaveIcon sx={{ mr: 0.5 }} /> Save Settings</Button>
         </form>
