@@ -750,7 +750,12 @@ class VideoModel:
                 return aVideo
 
         # set video information
-        with yt_dlp.YoutubeDL({}) as ydl:
+        # https://github.com/yt-dlp/yt-dlp/blob/master/yt_dlp/YoutubeDL.py
+        ydl_opts = {
+            'cookiefile': './db/cookies.txt',
+        }
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             logger.debug('getting file information from youtube')
             info = ydl.extract_info(url, download = False)
 

@@ -231,7 +231,7 @@ class DownloaderThread:
                 #'throttledratelimit': 1500,
                 'format_sort': ['res:' + str(format['height'])], # force resolution
                 #'mark_watched': True, # the mark watched func is overridden by the piworkoutpluginie plugin and the data is saved to the video model
-                #'cookiefile': './db/cookies.txt',
+                'cookiefile': './db/cookies.txt',
                 #'postprocessors': [ # sponsorblock now handled with player directly
                 #    {'key': 'SponsorBlock'},
                 #    {'key': 'ModifyChapters', 'remove_sponsor_segments': ['sponsor', 'preview']}
