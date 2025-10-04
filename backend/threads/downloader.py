@@ -163,19 +163,16 @@ class DownloaderThread:
                 bestHeight = 2160
                 self._formats = [
                     {
-                        'weight': 0.625,
+                        'weight': 0.85,
                         'height': 2160,
                         'name': '4K',
+                        'format_sort': ['res:2160'],
                     },
                     {
-                        'weight': 0.25,
-                        'height': 1440,
-                        'name': '1440p',
-                    },
-                    {
-                        'weight': 0.125,
+                        'weight': 0.15,
                         'height': 1080,
                         'name': '1080p',
+                        'format_sort': ['vcodec:avc', 'res:1080', 'acodec:aac'], # support iOS
                     },
                 ]
             case '1440p':
@@ -185,11 +182,13 @@ class DownloaderThread:
                         'weight': 0.65,
                         'height': 1440,
                         'name': '1440p',
+                        'format_sort': ['res:1440'],
                     },
                     {
                         'weight': 0.35,
                         'height': 1080,
                         'name': '1080p',
+                        'format_sort': ['vcodec:avc', 'res:1080', 'acodec:aac'], # support iOS
                     },
                 ]
             case '1080p':
@@ -199,6 +198,7 @@ class DownloaderThread:
                         'weight': 1.0,
                         'height': 1080,
                         'name': '1080p',
+                        'format_sort': ['vcodec:avc', 'res:1080', 'acodec:aac'], # support iOS
                     },
                 ]
             case '720p':
@@ -208,6 +208,7 @@ class DownloaderThread:
                         'weight': 1.0,
                         'height': 720,
                         'name': '720p',
+                        'format_sort': ['vcodec:avc', 'res:720', 'acodec:aac'], # support iOS
                     },
                 ]
                 
@@ -221,7 +222,6 @@ class DownloaderThread:
             self._currentFormat = format
 
 
-
             # https://github.com/yt-dlp/yt-dlp/blob/master/yt_dlp/YoutubeDL.py
             ydl_opts = {
                 'verbose': True,
@@ -229,7 +229,7 @@ class DownloaderThread:
                 'progress_hooks': [self._dlp_progress_hook],
                 'outtmpl': '/videos/' + str(id) + '-' + format['name'] + '-' + filename, # was '%(title)s.%(ext)s'
                 #'throttledratelimit': 1500,
-                'format_sort': ['res:' + str(format['height'])], # force resolution
+                'format_sort': format['format_sort'],
                 #'mark_watched': True, # the mark watched func is overridden by the piworkoutpluginie plugin and the data is saved to the video model
                 'cookiefile': './db/cookies.txt',
                 #'postprocessors': [ # sponsorblock now handled with player directly
@@ -266,10 +266,16 @@ class DownloaderThread:
                 'action': 'onDownloaded',
                 'data': str(id) + '-' + format['name'] + '-' + filename
             })
+
+            # yt-dlp will force .mp4 extension if container is an mp4 (e.g. filename.webm.mp4)
+            # this conflicts with our database where each resolution needs to have the same filename format
+            # rename mp4 to proper extension (yt-dlp)
+            fullFile = '/videos/' + str(id) + '-' + format['name'] + '-' + filename
+            if os.path.isfile(fullFile + '.mp4'):
+                os.rename(fullFile + '.mp4', fullFile)
                 
             # set time of file to now
             now = time.time()
-            fullFile = '/videos/' + str(id) + '-' + format['name'] + '-' + filename
             logger.debug('setting time of file ' + fullFile)
             os.utime(fullFile, (now, now))
             

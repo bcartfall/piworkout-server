@@ -33,7 +33,7 @@ def data():
 
 def receive(event, queue):
     if (event['method'] == 'PUT'):
-        logger.info('updating settings', str(event['data']))
+        logger.info('updating settings' + str(event['data']))
         for key in event['data']:
             if key in KEYS:
                 value = event['data'][key]
