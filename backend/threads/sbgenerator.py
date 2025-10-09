@@ -66,6 +66,7 @@ class SBGeneratorThread:
         ydl_opts = {
             'verbose': False,
             'format': 'sb0',
+            'cookiefile': './db/cookies.txt',
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             logger.debug('getting information from ytdlp')
