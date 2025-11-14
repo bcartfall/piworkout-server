@@ -839,7 +839,7 @@ class VideoModel:
             playlistId=self.getPlaylistId()
         )
         response = request.execute()
-        
+                
         sharedObject = {
             'change': False, # broadcast list of changed
             'ytVideos': [], # make sure youtube videos stay in order
