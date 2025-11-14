@@ -273,6 +273,10 @@ class DownloaderThread:
             fullFile = '/videos/' + str(id) + '-' + format['name'] + '-' + filename
             if os.path.isfile(fullFile + '.mp4'):
                 os.rename(fullFile + '.mp4', fullFile)
+            if os.path.isfile(fullFile + '.webm'):
+                os.rename(fullFile + '.webm', fullFile)
+            if os.path.isfile(fullFile + '.mkv'):
+                os.rename(fullFile + '.mkv', fullFile)
                 
             # set time of file to now
             now = time.time()

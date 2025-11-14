@@ -1,4 +1,4 @@
-FROM python:3.14-slim
+FROM python:3.12-slim
 
 WORKDIR /app/backend
 
@@ -29,27 +29,3 @@ COPY ./requirements.txt /app/init/requirements.txt
 RUN cd /app/init/ && pip install --no-cache-dir -r requirements.txt
 
 CMD ["bash", "run.bash"]
-
-# CMD [ "tail", "-f", "/app/init/requirements.txt" ]
-
-# install ffmpeg for yt-dlp
-#RUN apt-get update && \
-#    apt-get install -y --no-install-recommends \
-#    git \
-#    curl \
-#    ffmpeg \
-#    python3 \
-#    python3-pip && \
-#    rm -rf /var/lib/apt/lists/*
-
-# install deno
-# todo
-
-# install pip requirements
-# COPY ./requirements.txt /app/init/requirements.txt
-#RUN cd /app/init/ && pip install --no-cache-dir -r requirements.txt
-
-# copy client_secret.json
-#COPY client_secret.json /app/auth/client_secret.json
-
-#CMD ["bash", "run.bash"]
