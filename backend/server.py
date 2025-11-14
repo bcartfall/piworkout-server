@@ -183,11 +183,16 @@ def broadcast(obj, sender = None):
             continue
         queue.put_nowait(json.dumps(obj))
 
+async def _run_server():
+    host = os.environ["BACKEND_HOST"]
+    port = int(os.environ["BACKEND_PORT"])
+
+    async with serve(handler, host, port):
+        await asyncio.Future()  # run forever
+
 
 def start():
     host = os.environ['BACKEND_HOST']
     port = os.environ['BACKEND_PORT']
     
-    start_server = serve(handler, host, port)
-    asyncio.get_event_loop().run_until_complete(start_server)
-    asyncio.get_event_loop().run_forever()
+    asyncio.run(_run_server())
