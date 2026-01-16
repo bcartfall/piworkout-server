@@ -122,7 +122,7 @@ class DownloaderThread:
             self._currentVideo.progress = model.VideoProgress()
             self._previousWeight = 0
             url = self._currentVideo.url
-            logger.info('downloading next item from queue ' + str(self._currentVideo.videoId))
+            logger.info('Downloading next item from queue ' + str(self._currentVideo.videoId))
             id = self._currentVideo.id
             filename = self._currentVideo.filename
             
@@ -148,9 +148,11 @@ class DownloaderThread:
                     pass
 
             def info(self, msg):
+                self.info(msg)
                 pass
 
             def warning(self, msg):
+                self.info(msg)
                 pass
 
             def error(self, msg):
@@ -221,7 +223,6 @@ class DownloaderThread:
             self._totalBytesEstimate = 0
             self._currentFormat = format
 
-
             # https://github.com/yt-dlp/yt-dlp/blob/master/yt_dlp/YoutubeDL.py
             ydl_opts = {
                 'verbose': True,
@@ -231,7 +232,7 @@ class DownloaderThread:
                 #'throttledratelimit': 1500,
                 'format_sort': format['format_sort'],
                 #'mark_watched': True, # the mark watched func is overridden by the piworkoutpluginie plugin and the data is saved to the video model
-                'cookiefile': './db/cookies.txt',
+                #'cookiefile': './db/cookies.txt', # disabled cookies
                 #'postprocessors': [ # sponsorblock now handled with player directly
                 #    {'key': 'SponsorBlock'},
                 #    {'key': 'ModifyChapters', 'remove_sponsor_segments': ['sponsor', 'preview']}

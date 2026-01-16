@@ -752,7 +752,7 @@ class VideoModel:
         # set video information
         # https://github.com/yt-dlp/yt-dlp/blob/master/yt_dlp/YoutubeDL.py
         ydl_opts = {
-            'cookiefile': './db/cookies.txt',
+            #'cookiefile': './db/cookies.txt', # disabled cookies
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
