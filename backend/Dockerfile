@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 WORKDIR /app/backend
 
@@ -13,7 +13,7 @@ RUN apt-get update && \
     apt-get clean
 
 # install deno-js-runtime for yt-dlp
-RUN VERSION=2.5.6 && \
+RUN VERSION=2.6.5 && \
     ARCH=x86_64-unknown-linux-gnu && \
     curl -L -o deno-${ARCH}.zip https://github.com/denoland/deno/releases/download/v${VERSION}/deno-${ARCH}.zip && \
     curl -L -o deno.zip.sha256sum https://github.com/denoland/deno/releases/download/v${VERSION}/deno-${ARCH}.zip.sha256sum && \
