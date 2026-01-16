@@ -18,6 +18,7 @@ from google.auth.exceptions import RefreshError
 from google.api_core.exceptions import RetryError, ServiceUnavailable, NotFound
 import yt_dlp
 import subprocess
+import traceback
 
 import logging
 logger = logging.getLogger('piworkout-server')
@@ -52,6 +53,7 @@ class ListFetchThread:
                     logger.error('Error Retry: ' + str(re))
                 except Exception as e:
                     logger.error('Error exception: ' + str(e))
+                    logger.error(''.join(traceback.format_tb(e.__traceback__)))
                     
             # determine if there is a video to mark watched in queue
             video = None
