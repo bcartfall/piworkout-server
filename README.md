@@ -23,7 +23,7 @@ piWorkout Server is the main server for piWorkout Desktop, piWorkout iOS, and pi
 
 The docker build will take care of all dependencies.
 
-- Python 3.7 or greater
+- Python 3.10 or greater
 - python libraries (see backend/requirements.txt)
     
 # Instructions

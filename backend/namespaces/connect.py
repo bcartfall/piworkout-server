@@ -27,7 +27,7 @@ def receive(event, queue):
         # Use the client_secret.json file to identify the application requesting
         # authorization. The client ID (from that file) and access scopes are required.
         flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
-            '/app/auth/client_secret.json',
+            '/app/backend/client_secret.json',
             scopes=['https://www.googleapis.com/auth/youtube.force-ssl'])
 
         # Indicate where the API server will redirect the user after the user completes
@@ -62,7 +62,7 @@ def receive(event, queue):
         logger.debug('state=' + event['state'])
         
         flow = google_auth_oauthlib.flow.Flow.from_client_secrets_file(
-            '/app/auth/client_secret.json',
+            '/app/backend/client_secret.json',
             scopes=[event['scope']],
             state=event['state'])
         #flow.redirect_uri = event['redirectUri']

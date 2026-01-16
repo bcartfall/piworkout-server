@@ -254,7 +254,7 @@ class DownloaderThread:
             # download
             logger.debug('Downloading with options: ' + str(ydl_opts))
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                logger.info('------------------------------- starting download')
+                logger.info(f'------------------------------- starting download {url}')
                 ydl.download(url)
 
                 # post processing has finished and thread is about to close
