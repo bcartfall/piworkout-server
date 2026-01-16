@@ -148,11 +148,9 @@ class DownloaderThread:
                     pass
 
             def info(self, msg):
-                self.info(msg)
                 pass
 
             def warning(self, msg):
-                self.info(msg)
                 pass
 
             def error(self, msg):
