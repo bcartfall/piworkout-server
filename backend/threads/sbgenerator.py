@@ -13,9 +13,8 @@ import yt_dlp
 import json
 import requests
 import shutil
-
 import model
-
+import locks
 import logging
 logger = logging.getLogger('piworkout-server')
 
@@ -24,7 +23,7 @@ INTERVAL=5000 # time between storyboard images in ms - used for deprecated bif g
 class SBGeneratorThread:
     _running = True
     generateQueue = []
-    queueMutex = threading.Lock()
+    queueMutex = locks.LoggingLock('SBGeneratorThread')
 
     def run(self):
         while (self._running):
@@ -34,7 +33,7 @@ class SBGeneratorThread:
                     video = self.generateQueue.pop(0)
             if (video != None):
                 self._generateSB(video)
-            time.sleep(1)
+            time.sleep(5)
             
     def close(self):
         self._running = False

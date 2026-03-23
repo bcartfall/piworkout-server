@@ -5,7 +5,6 @@
 """
 
 import sqlite3
-import threading
 import time
 import json
 from dataclasses import dataclass
@@ -22,6 +21,7 @@ import http.cookiejar as cookielib
 
 from threads import downloader, listfetch, sbgenerator
 from namespaces import videos
+import locks
 
 import logging
 logger = logging.getLogger('piworkout-server')
@@ -44,11 +44,12 @@ def dict_factory(cursor, row):
 
 db.row_factory = dict_factory
 
-mutex = threading.Lock() # DB mutex
+mutex = locks.LoggingLock('DB') # DB mutex
 
 DEBUG = False # default False # set debug to true to delete the DB and redownload every video from the playlist
 
 # initialize database
+logger.debug('Lock obtain: model')
 with mutex:
     #db.execute('DROP TABLE routines')
     if (DEBUG):
@@ -85,7 +86,7 @@ class SettingsModel:
         'ytMarkWatchedHost': '',
         'ytDlpArgv': '',
     }
-    _dataMutex = threading.Lock()
+    _dataMutex = locks.LoggingLock('SettingsModel')
 
     def __init__(self, db, mutex):
         self._db = db
@@ -196,7 +197,7 @@ class Routine:
         
 class RoutineModel:
     _items = []
-    _dataMutex = threading.Lock()
+    _dataMutex = locks.LoggingLock('RoutineModel')
 
     def __init__(self, db, mutex, settings):
         self._db = db
@@ -498,7 +499,7 @@ class Video:
 
 class VideoModel:
     _items = []
-    _dataMutex = threading.Lock()
+    _dataMutex = locks.LoggingLock('VideoModel')
 
     def __init__(self, db, mutex, settings):
         self._db = db

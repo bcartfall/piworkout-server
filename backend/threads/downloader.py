@@ -14,13 +14,14 @@ import shlex
 
 import model, server
 from threads import sbgenerator
+import locks
 
 import logging
 logger = logging.getLogger('piworkout-server')
 
 class DownloaderThread:
     _running = True
-    _mutex = threading.Lock() # lock with mutex every time self._queue is manipulated
+    _mutex = locks.LoggingLock('DownloaderThread') # lock with mutex every time self._queue is manipulated
     _queue = [] # queue of videos to download
     _currentVideo = None # current video that is downloading
     _lastUpdate = 0 # only update progress at specific intervals
@@ -33,7 +34,8 @@ class DownloaderThread:
 
     def run(self):
         while (self._running):
-            time.sleep(0.033) # 30hz
+            # time.sleep(0.033) # 30hz
+            time.sleep(5)
 
             # simulate file downloading
             if (self._simulate):

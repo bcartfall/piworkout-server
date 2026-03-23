@@ -29,6 +29,7 @@ services:
       - GOOGLE_OAUTH_REDIRECT_URI=$GOOGLE_OAUTH_REDIRECT_URI
       - BACKEND_HOST=0.0.0.0
       - BACKEND_PORT=5001
+      - DEBUG_LOCKS=$DEBUG_LOCKS
     volumes:
       - ./backend/:/app/backend
       - $VIDEO_FOLDER:/videos

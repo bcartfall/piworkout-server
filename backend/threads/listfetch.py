@@ -19,6 +19,7 @@ from google.api_core.exceptions import RetryError, ServiceUnavailable, NotFound
 import yt_dlp
 import subprocess
 import traceback
+import locks
 
 import logging
 logger = logging.getLogger('piworkout-server')
@@ -29,7 +30,7 @@ class ListFetchThread:
     _gcCounter = 60
     _wait = 60 # check every 60 seconds
     markWatchedQueue = []
-    queueMutex = threading.Lock()
+    queueMutex = locks.LoggingLock('ListfetchThread')
     cj = None
 
     def run(self):
@@ -63,7 +64,7 @@ class ListFetchThread:
             if (video != None):
                 self.markWatched(video)
             
-            time.sleep(1) 
+            time.sleep(5) 
 
     def close(self):
         self._running = False
