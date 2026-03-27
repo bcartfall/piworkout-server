@@ -88,6 +88,7 @@ async def consumer_handler(websocket, queue):
         async for message in websocket:
             jsonMessage = None
             binaryMessage = None
+            logger.info('  consumer_handler')            
             try:
                 # determine if a binary message
                 if (message[0] == '{'):
@@ -115,7 +116,8 @@ async def producer_handler(websocket, queue):
         while True:
             # get message from queue, block if not messages
             try:
-                message = queue.get(False)
+                message = queue.get(False, 5) # timeout 5s
+                logger.info('  producer_handler')            
                 await websocket.send(message)
                 queue.task_done()
             except Empty:
@@ -146,7 +148,8 @@ async def handler(websocket):
         }
         
         try:
-            queue.put(json.dumps(obj))
+            logger.info('  adding initial message object to queue')
+            queue.put(json.dumps(obj), True, 5) # 5s timeout
         except websockets.exceptions.ConnectionClosed:
             logger.debug('  client disconnected early')
         except:
@@ -175,6 +178,7 @@ def broadcast(obj, sender = None):
     """
     Send message to all users. If sender is specified do not send back to sender.
     """
+    logger.info('  sending broadcast message to all users')
     global MESSAGE_ID
     MESSAGE_ID += 1
     obj['messageId'] = MESSAGE_ID
